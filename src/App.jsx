@@ -18,6 +18,7 @@ import { DashboardCameraStage } from "./components/dashboard/DashboardCameraStag
 import { DashboardLeftColumn } from "./components/dashboard/DashboardLeftColumn.jsx";
 import { DashboardModals } from "./components/dashboard/modals/DashboardModals.jsx";
 import { DashboardRightColumn } from "./components/dashboard/DashboardRightColumn.jsx";
+import { GameScreen } from "./components/game/GameScreen.jsx";
 import { ShellFooterCredits } from "./components/footer/ShellFooterCredits.jsx";
 import { DashboardHeaderBar } from "./components/head/DashboardHeaderBar.jsx";
 import { SidebarMenu } from "./components/menu/SidebarMenu.jsx";
@@ -209,6 +210,17 @@ function App() {
       setActiveNav("perfil");
       return;
     }
+    if (id === "game") {
+      closeMobile();
+      closeDesktopNavbar();
+      closeStatsModal();
+      closeTodayModal();
+      closeHistoryModal();
+      closeSettingsModal();
+      closeProfileModal();
+      setActiveNav("game");
+      return;
+    }
     setActiveNav(id);
   };
 
@@ -312,20 +324,24 @@ function App() {
         />
 
         <AppShell.Main className="app-main-content">
-          <section className="dashboard-grid">
-            <DashboardLeftColumn />
+          {activeNav === "game" ? (
+            <GameScreen />
+          ) : (
+            <section className="dashboard-grid">
+              <DashboardLeftColumn />
 
-            <DashboardCameraStage
-              videoRef={videoRef}
-              status={status}
-              startCamera={startCamera}
-              stopCamera={stopCamera}
-            />
+              <DashboardCameraStage
+                videoRef={videoRef}
+                status={status}
+                startCamera={startCamera}
+                stopCamera={stopCamera}
+              />
 
-            <DashboardRightColumn
-              onOpenEmotionsToday={openEmotionsTodayFromDashboard}
-            />
-          </section>
+              <DashboardRightColumn
+                onOpenEmotionsToday={openEmotionsTodayFromDashboard}
+              />
+            </section>
+          )}
         </AppShell.Main>
       </DashboardLiveSessionProvider>
 

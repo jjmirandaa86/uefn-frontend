@@ -1,0 +1,75 @@
+.game-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: min(88vh, 900px);
+  padding: 8px 0 16px;
+}
+
+.game-shell__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-canvas-host {
+  flex: 1;
+  min-height: 280px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: radial-gradient(
+    circle at 20% 0%,
+    rgba(139, 92, 246, 0.18),
+    rgba(15, 23, 42, 0.92)
+  );
+}
+
+.game-overlay {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.game-primary-btn {
+  appearance: none;
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  color: #f8fafc;
+  font-weight: 800;
+  padding: 12px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.game-primary-btn:hover {
+  filter: brightness(1.06);
+}
+
+.game-ghost-btn {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: #e2e8f0;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.game-ghost-btn:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.game-overlay--start {
+  width: 100%;
+  min-height: min(72vh, 640px);
+  justify-content: center;
+}
+
+.game-calibration-root {
+  width: 100%;
+}

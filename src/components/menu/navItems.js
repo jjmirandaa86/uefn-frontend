@@ -12,4 +12,5 @@ export const NAV_ITEMS = [
   { id: "estadisticas", icon: IconChartDots, label: "Datos Históricos" },
   { id: "emociones-hoy", icon: IconCalendarEvent, label: "Emociones de hoy" },
   { id: "perfil", icon: IconUser, label: "Perfil" },
+  { id: "game", icon: IconUser, label: "Juego" },
 ];
