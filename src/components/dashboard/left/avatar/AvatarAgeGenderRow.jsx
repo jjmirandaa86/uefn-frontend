@@ -1,12 +1,18 @@
 import { Avatar, Group, Stack, Text } from "@mantine/core";
-import { IconUser } from "@tabler/icons-react";
+import { IconMan, IconUser, IconWoman } from "@tabler/icons-react";
 
+const ICON = { size: 28, stroke: 1.5 };
+
+/** Fila edad/género: icono Tabler (hombre / mujer / neutro), sin imágenes. */
 export function AvatarAgeGenderRow({
-  age = "24 años",
-  gender = "Masculino",
+  age = "—",
+  gender = "Sin detección",
+  symbol = "neutral",
   gradient = { from: "violet", to: "cyan", deg: 125 },
-  icon: IconComponent = IconUser,
 }) {
+  const Glyph =
+    symbol === "male" ? IconMan : symbol === "female" ? IconWoman : IconUser;
+
   return (
     <Group gap="md" wrap="nowrap" align="flex-start">
       <Avatar
@@ -17,7 +23,7 @@ export function AvatarAgeGenderRow({
         aria-hidden
         style={{ flexShrink: 0 }}
       >
-        <IconComponent size={26} stroke={1.5} />
+        <Glyph {...ICON} />
       </Avatar>
       <Stack gap={6} justify="center" miw={0} style={{ flex: 1 }}>
         <Text fw={800} size="lg" lh={1.25}>

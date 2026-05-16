@@ -248,6 +248,14 @@ body {
   letter-spacing: 0;
 }
 
+.emotion-orb__emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
 .current-emotion-card__label {
   font-size: clamp(1.9rem, 11cqi, 3rem);
 }
@@ -384,6 +392,11 @@ body {
   transform: scaleX(-1);
 }
 
+.camera-video[data-paused] {
+  outline: 2px solid rgba(250, 204, 21, 0.45);
+  outline-offset: -2px;
+}
+
 .camera-placeholder {
   position: relative;
   z-index: 2;
@@ -450,6 +463,40 @@ body {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.6) inset;
 }
 
+/* Fila superior del stage: título + LIVE a la derecha del bloque de texto; acciones al extremo */
+.dcs-stage-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dcs-stage-header__lead {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.dcs-stage-header__titles {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.dcs-stage-header__live-badge {
+  flex-shrink: 0;
+}
+
+.dcs-stage-header__actions {
+  flex-shrink: 0;
+}
+
 .dcs-video-shell {
   position: relative;
   flex: 1 1 auto;
@@ -463,6 +510,16 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
+}
+
+.dcs-landmarks-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1);
 }
 
 .dcs-facial-points-check {
@@ -672,6 +729,18 @@ body {
   pointer-events: none;
 }
 
+/* Texto de detalle: altura fija de 3 líneas (lh 1.55) para evitar saltos de layout */
+.confidence-insight-card__description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  word-break: break-word;
+  line-height: 1.55;
+  min-height: calc(3 * 1.55em);
+  max-height: calc(3 * 1.55em);
+}
+
 /* EmotionEmojiConfidenceList — barras y CTA (referencia UI “Resumen”) */
 .emotion-confidence-list {
   width: 100%;
@@ -714,6 +783,25 @@ body {
 @media (max-width: 1180px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  /*
+   * ORDEN SOLO EN VISTA RESPONSIVE (≤1180px, grid a 1 columna):
+   * cambia el orden visual con `order` sin mover el JSX en App.jsx.
+   * Flujo: DashboardCameraStage (.center-stage) → DashboardLeftColumn (.left-column)
+   * → DashboardRightColumn (.right-column).
+   * En escritorio (>1180px) no aplica esta media: queda el layout de 3 columnas tal cual el DOM.
+   */
+  .dashboard-grid > .center-stage {
+    order: 1;
+  }
+
+  .dashboard-grid > .left-column {
+    order: 2;
+  }
+
+  .dashboard-grid > .right-column {
+    order: 3;
   }
 
   .left-column,

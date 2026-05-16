@@ -5,6 +5,8 @@ export function useCamera() {
   const streamRef = useRef(null);
   const mountedRef = useRef(false);
   const [status, setStatus] = useState('idle');
+  const [cameraSessionStartedAt, setCameraSessionStartedAt] =
+    useState(null);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -13,6 +15,7 @@ export function useCamera() {
     if (el) {
       el.srcObject = null;
     }
+    setCameraSessionStartedAt(null);
     setStatus('idle');
   }, []);
 
@@ -43,17 +46,20 @@ export function useCamera() {
 
   const startCamera = useCallback(async () => {
     if (typeof globalThis !== 'undefined' && !globalThis.isSecureContext) {
+      setCameraSessionStartedAt(null);
       setStatus('insecure');
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraSessionStartedAt(null);
       setStatus('unsupported');
       return;
     }
 
     try {
       setStatus('requesting');
+      setCameraSessionStartedAt(null);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720, facingMode: 'user' },
         audio: false,
@@ -61,6 +67,7 @@ export function useCamera() {
 
       if (!mountedRef.current) {
         stream.getTracks().forEach((track) => track.stop());
+        setCameraSessionStartedAt(null);
         return;
       }
 
@@ -69,6 +76,7 @@ export function useCamera() {
       if (!el) {
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
+        setCameraSessionStartedAt(null);
         setStatus('idle');
         return;
       }
@@ -84,16 +92,19 @@ export function useCamera() {
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
         el.srcObject = null;
+        setCameraSessionStartedAt(null);
         return;
       }
 
+      setCameraSessionStartedAt(Date.now());
       setStatus('ready');
     } catch {
       if (mountedRef.current) {
+        setCameraSessionStartedAt(null);
         setStatus('denied');
       }
     }
   }, []);
 
-  return { videoRef, status, startCamera, stopCamera };
+  return { videoRef, status, startCamera, stopCamera, cameraSessionStartedAt };
 }

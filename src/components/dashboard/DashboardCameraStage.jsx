@@ -1,4 +1,4 @@
-import { useCallback, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   Badge,
   Box,
@@ -9,15 +9,32 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { IconBroadcast, IconCamera, IconVideoOff } from "@tabler/icons-react";
-import { emotions } from "../../data/emotions.js";
+import {
+  IconBroadcast,
+  IconCamera,
+  IconPlayerPause,
+  IconPlayerPlay,
+  IconVideoOff,
+} from "@tabler/icons-react";
+import { useDashboardLiveSession } from "../../hooks/useDashboardLiveSession.js";
+import {
+  APPROXIMATE_PROFILE_IDLE,
+  EMOTION_ROWS_IDLE,
+  NEUTRAL_FALLBACK,
+} from "../../dashboard/liveEmotionDefaults.js";
+import { detectFacesLandmarksExpressionsFromVideo } from "../../services/faceApi.js";
+import { mapFaceApiToEmotion, mapFaceExpressionsToEmotionRows } from "../../utils/mapFaceApiToEmotion.js";
 
-const PREVIEW_EMOTION = [...emotions].sort(
-  (a, b) => b.confidence - a.confidence,
-)[0];
-
-const OVERLAY_LABEL =
-  PREVIEW_EMOTION.key === "happy" ? "Felicidad" : PREVIEW_EMOTION.label;
+function pickPrimaryFace(results) {
+  if (!results?.length) return null;
+  return results.reduce((a, b) => {
+    const ba = a.detection?.box;
+    const bb = b.detection?.box;
+    const areaA = ba ? ba.width * ba.height : 0;
+    const areaB = bb ? bb.width * bb.height : 0;
+    return areaB > areaA ? b : a;
+  });
+}
 
 function statusSubtitle(status) {
   switch (status) {
@@ -66,36 +83,283 @@ function DcsSparkline() {
   );
 }
 
-function FaceDecorOverlay() {
-  return (
-    <div className="dcs-face-overlay" aria-hidden>
-      <svg
-        className="dcs-face-mesh"
-        viewBox="0 0 200 200"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <g stroke="rgba(248,250,252,0.22)" strokeWidth="0.6" fill="none">
-          <path d="M100 40 L100 160 M60 70 L140 70 M70 100 L130 100 M75 130 L125 130" />
-          <path d="M60 55 Q100 35 140 55 M55 100 Q100 75 145 100 M65 145 Q100 165 135 145" />
-          <ellipse cx="100" cy="105" rx="52" ry="64" />
-        </g>
-      </svg>
-      <span className="dcs-bracket dcs-bracket--tl" />
-      <span className="dcs-bracket dcs-bracket--tr" />
-      <span className="dcs-bracket dcs-bracket--bl" />
-      <span className="dcs-bracket dcs-bracket--br" />
-    </div>
-  );
-}
-
 export function DashboardCameraStage({
   videoRef,
   status,
   startCamera,
   stopCamera,
 }) {
+  const {
+    liveEmotion,
+    setLiveEmotion,
+    setEmotionRows,
+    setApproximateProfile,
+    pauseSessionTimer,
+    resumeSessionTimer,
+  } = useDashboardLiveSession();
+  const landmarksCanvasRef = useRef(null);
+  const facialPointsEnabledRef = useRef(true);
+  const isPreviewPausedRef = useRef(false);
+  const approximateEmitRef = useRef({ ageYears: null, gender: null });
   const [facialPointsEnabled, setFacialPointsEnabled] = useState(true);
-  const confidence = PREVIEW_EMOTION.confidence;
+  const [isPreviewPaused, setIsPreviewPaused] = useState(false);
+  const prevStatusForFacialRef = useRef(status);
+
+  useEffect(() => {
+    facialPointsEnabledRef.current = facialPointsEnabled;
+  }, [facialPointsEnabled]);
+
+  useEffect(() => {
+    if (status === "ready" && prevStatusForFacialRef.current !== "ready") {
+      setFacialPointsEnabled(true);
+      facialPointsEnabledRef.current = true;
+    }
+    prevStatusForFacialRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    isPreviewPausedRef.current = isPreviewPaused;
+  }, [isPreviewPaused]);
+
+  useEffect(() => {
+    if (status !== "ready") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- al cortar la cámara debe desactivarse la pausa local
+      setIsPreviewPaused(false);
+      isPreviewPausedRef.current = false;
+    }
+  }, [status]);
+
+  const togglePreviewPause = useCallback(() => {
+    const el = videoRef?.current;
+    if (!el || status !== "ready") return;
+    setIsPreviewPaused((was) => {
+      const next = !was;
+      isPreviewPausedRef.current = next;
+      if (next) {
+        pauseSessionTimer();
+        void el.pause();
+      } else {
+        resumeSessionTimer();
+        void el.play().catch(() => {});
+      }
+      return next;
+    });
+  }, [
+    videoRef,
+    status,
+    pauseSessionTimer,
+    resumeSessionTimer,
+  ]);
+
+  useEffect(() => {
+    const canvas = landmarksCanvasRef.current;
+    if (status !== "ready") {
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      return undefined;
+    }
+
+    let cancelled = false;
+    let rafId = 0;
+    let busy = false;
+
+    const loop = () => {
+      if (cancelled) return;
+      rafId = requestAnimationFrame(async () => {
+        if (cancelled) return;
+        const video = videoRef?.current;
+        const c = landmarksCanvasRef.current;
+        if (!video || video.readyState < 2) {
+          if (!cancelled) loop();
+          return;
+        }
+        if (isPreviewPausedRef.current) {
+          if (!cancelled) loop();
+          return;
+        }
+        if (busy) {
+          if (!cancelled) loop();
+          return;
+        }
+        busy = true;
+        try {
+          const results = await detectFacesLandmarksExpressionsFromVideo(video);
+          if (cancelled) return;
+
+          const primary = pickPrimaryFace(results);
+
+          const emitApproximateIdle = () => {
+            const last = approximateEmitRef.current;
+            if (last.ageYears !== null || last.gender !== null) {
+              approximateEmitRef.current = { ageYears: null, gender: null };
+              setApproximateProfile(APPROXIMATE_PROFILE_IDLE);
+            }
+          };
+
+          const emitApproximateFromFace = (face) => {
+            const rawAge = face?.age;
+            const rawGender = face?.gender;
+            const gender =
+              rawGender === "male" || rawGender === "female" ? rawGender : null;
+            const ageYears =
+              typeof rawAge === "number" && Number.isFinite(rawAge)
+                ? Math.max(0, Math.round(rawAge))
+                : null;
+            if (gender == null || ageYears == null) {
+              emitApproximateIdle();
+              return;
+            }
+            const last = approximateEmitRef.current;
+            if (last.ageYears === ageYears && last.gender === gender) return;
+            approximateEmitRef.current = { ageYears, gender };
+            setApproximateProfile({ hasFace: true, ageYears, gender });
+          };
+
+          if (!primary) {
+            emitApproximateIdle();
+            setLiveEmotion((prev) => {
+              const next = NEUTRAL_FALLBACK;
+              if (
+                prev.key === next.key &&
+                prev.confidence === next.confidence
+              ) {
+                return prev;
+              }
+              return next;
+            });
+            setEmotionRows((prev) => {
+              const allZero = prev.every((r) => r.confidence === 0);
+              return allZero ? prev : EMOTION_ROWS_IDLE;
+            });
+          } else {
+            emitApproximateFromFace(primary);
+
+            if (!primary?.expressions) {
+              setLiveEmotion((prev) => {
+                const next = NEUTRAL_FALLBACK;
+                if (
+                  prev.key === next.key &&
+                  prev.confidence === next.confidence
+                ) {
+                  return prev;
+                }
+                return next;
+              });
+              setEmotionRows((prev) => {
+                const allZero = prev.every((r) => r.confidence === 0);
+                return allZero ? prev : EMOTION_ROWS_IDLE;
+              });
+            } else {
+              const next = mapFaceApiToEmotion(primary.expressions);
+              setLiveEmotion((prev) => {
+                if (
+                  prev.key === next.key &&
+                  Math.abs(prev.confidence - next.confidence) < 2
+                ) {
+                  return prev;
+                }
+                return next;
+              });
+              const rows = mapFaceExpressionsToEmotionRows(primary.expressions);
+              setEmotionRows((prev) => {
+                if (
+                  prev.length === rows.length &&
+                  prev.every((p, i) => p.confidence === rows[i].confidence)
+                ) {
+                  return prev;
+                }
+                return rows;
+              });
+            }
+          }
+
+          if (facialPointsEnabledRef.current && c && results?.length) {
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
+            const dw = video.clientWidth;
+            const dh = video.clientHeight;
+            if (vw && vh && dw && dh) {
+              const dpr = window.devicePixelRatio || 1;
+              c.width = Math.max(1, Math.floor(dw * dpr));
+              c.height = Math.max(1, Math.floor(dh * dpr));
+              c.style.width = `${dw}px`;
+              c.style.height = `${dh}px`;
+
+              const ctx = c.getContext("2d");
+              if (ctx) {
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.clearRect(0, 0, dw, dh);
+                const sx = dw / vw;
+                const sy = dh / vh;
+                ctx.fillStyle = "rgba(248, 250, 252, 0.78)";
+                ctx.strokeStyle = "rgba(196, 181, 253, 0.35)";
+                ctx.lineWidth = 1;
+
+                for (const det of results) {
+                  const pts = det.landmarks?.positions;
+                  if (!pts) continue;
+                  for (const p of pts) {
+                    const x = p.x * sx;
+                    const y = p.y * sy;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                  }
+                }
+              }
+            }
+          } else if (c && !facialPointsEnabledRef.current) {
+            const ctx = c.getContext("2d");
+            if (ctx) {
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, c.width, c.height);
+            }
+            c.width = 0;
+            c.height = 0;
+          }
+        } catch (e) {
+          console.error("[DashboardCameraStage] face pipeline:", e);
+        } finally {
+          busy = false;
+          if (!cancelled) loop();
+        }
+      });
+    };
+
+    loop();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      approximateEmitRef.current = { ageYears: null, gender: null };
+      setLiveEmotion(NEUTRAL_FALLBACK);
+      setEmotionRows(EMOTION_ROWS_IDLE);
+      setApproximateProfile(APPROXIMATE_PROFILE_IDLE);
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    };
+  }, [
+    status,
+    videoRef,
+    setLiveEmotion,
+    setEmotionRows,
+    setApproximateProfile,
+  ]);
 
   const handleSnapshot = useCallback(() => {
     const el = videoRef?.current;
@@ -103,15 +367,15 @@ export function DashboardCameraStage({
     const w = el.videoWidth;
     const h = el.videoHeight;
     if (!w || !h) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
+    const snap = document.createElement("canvas");
+    snap.width = w;
+    snap.height = h;
+    const ctx = snap.getContext("2d");
     if (!ctx) return;
     ctx.translate(w, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(el, 0, 0, w, h);
-    canvas.toBlob((blob) => {
+    snap.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -123,41 +387,40 @@ export function DashboardCameraStage({
   }, [videoRef]);
 
   const snapshotDisabled = status !== "ready";
+  const overlayLabel = liveEmotion.label;
 
   return (
     <section className="center-stage">
       <div className="camera-panel camera-panel--stage">
-        <Group
-          justify="space-between"
-          align="flex-start"
-          wrap="nowrap"
-          gap="md"
-        >
-          <Group gap="sm" wrap="nowrap" align="flex-start">
-            <Box
-              mt={4}
-              w={10}
-              h={10}
-              bg="violet.5"
-              style={{ borderRadius: 999, flexShrink: 0 }}
-            />
-            <Stack gap={2}>
-              <Text size="sm" fw={600} c="gray.0">
-                Vista en tiempo real
-              </Text>
-              <Text size="xs" c="dimmed">
-                {statusSubtitle(status)}
-              </Text>
-            </Stack>
-          </Group>
-          {status === "ready" ? (
-            <Group gap="sm" wrap="nowrap" align="center">
+        <Box className="dcs-stage-header">
+          <Box className="dcs-stage-header__lead">
+            <Box className="dcs-stage-header__titles">
+              <Group gap="sm" wrap="nowrap" align="flex-start">
+                <Box
+                  mt={4}
+                  w={10}
+                  h={10}
+                  bg="violet.5"
+                  style={{ borderRadius: 999, flexShrink: 0 }}
+                />
+                <Stack gap={2}>
+                  <Text size="sm" fw={600} c="gray.0">
+                    Vista en tiempo real
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {statusSubtitle(status)}
+                  </Text>
+                </Stack>
+              </Group>
+            </Box>
+            {status === "ready" ? (
               <Badge
                 variant="outline"
                 color="violet"
                 size="lg"
                 radius="xl"
                 leftSection={<IconBroadcast size={14} stroke={1.75} />}
+                className="dcs-stage-header__live-badge"
                 styles={{
                   root: {
                     borderColor: "rgba(167, 139, 250, 0.55)",
@@ -168,8 +431,33 @@ export function DashboardCameraStage({
                   },
                 }}
               >
-                LIVE
+                {isPreviewPaused ? "PAUSA" : "LIVE"}
               </Badge>
+            ) : null}
+          </Box>
+          {status === "ready" ? (
+            <Group
+              gap="sm"
+              wrap="nowrap"
+              align="center"
+              className="dcs-stage-header__actions"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant="light"
+                color="yellow"
+                leftSection={
+                  isPreviewPaused ? (
+                    <IconPlayerPlay size={16} stroke={1.75} />
+                  ) : (
+                    <IconPlayerPause size={16} stroke={1.75} />
+                  )
+                }
+                onClick={togglePreviewPause}
+              >
+                {isPreviewPaused ? "Reanudar" : "Pausar"}
+              </Button>
               <Button
                 type="button"
                 size="sm"
@@ -187,21 +475,30 @@ export function DashboardCameraStage({
               color="gray"
               size="md"
               radius="xl"
-              styles={{ root: { opacity: 0.85 } }}
+              styles={{ root: { opacity: 0.85, flexShrink: 0 } }}
             >
               OFF
             </Badge>
           )}
-        </Group>
+        </Box>
 
         <div className="dcs-video-shell">
           <video
             ref={videoRef}
             className="camera-video"
+            data-paused={isPreviewPaused || undefined}
             autoPlay
             muted
             playsInline
           />
+
+          {status === "ready" && (
+            <canvas
+              ref={landmarksCanvasRef}
+              className="dcs-landmarks-canvas"
+              aria-hidden
+            />
+          )}
 
           {status !== "ready" && (
             <div className="camera-placeholder camera-placeholder--dcs">
@@ -261,14 +558,16 @@ export function DashboardCameraStage({
                 color="violet"
                 size="sm"
                 styles={{
-                  label: { color: "rgba(248, 250, 252, 0.95)", fontWeight: 600 },
+                  label: {
+                    color: "rgba(248, 250, 252, 0.95)",
+                    fontWeight: 600,
+                  },
                   input: { cursor: "pointer" },
                 }}
               />
             </Box>
           )}
 
-          {status === "ready" && facialPointsEnabled && <FaceDecorOverlay />}
           {status === "ready" && (
             <div className="dcs-bottom-strip">
               <Group
@@ -284,15 +583,17 @@ export function DashboardCameraStage({
                   </Text>
                   <Group gap="sm" wrap="nowrap" align="center">
                     <Text component="span" fz="2rem" lh={1} aria-hidden>
-                      {PREVIEW_EMOTION.emoji}
+                      {liveEmotion.emoji}
                     </Text>
                     <Text
                       size="xl"
                       fw={800}
-                      c="violet.3"
-                      style={{ lineHeight: 1.1 }}
+                      style={{
+                        lineHeight: 1.1,
+                        color: liveEmotion.color,
+                      }}
                     >
-                      {OVERLAY_LABEL}
+                      {overlayLabel}
                     </Text>
                   </Group>
                 </Stack>
@@ -302,7 +603,7 @@ export function DashboardCameraStage({
                   c="gray.0"
                   style={{ flexShrink: 0, lineHeight: 1 }}
                 >
-                  {confidence}%
+                  {liveEmotion.confidence}%
                 </Text>
                 <Box className="dcs-sparkline-wrap">
                   <DcsSparkline />

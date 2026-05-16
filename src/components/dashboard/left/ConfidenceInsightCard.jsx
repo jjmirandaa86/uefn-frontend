@@ -22,7 +22,7 @@ function qualityCopy(value) {
   };
 }
 
-export function ConfidenceInsightCard({ value = 87 }) {
+export function ConfidenceInsightCard({ value = 87, ringColor = "#8b5cf6" }) {
   const pct = Math.max(0, Math.min(100, Number(value) || 0));
   const { label, description } = qualityCopy(pct);
 
@@ -40,7 +40,7 @@ export function ConfidenceInsightCard({ value = 87 }) {
           size={128}
           thickness={14}
           roundCaps
-          sections={[{ value: pct, color: "#8b5cf6" }]}
+          sections={[{ value: pct, color: ringColor }]}
           styles={{
             root: { flexShrink: 0, maxWidth: "100%" },
           }}
@@ -63,7 +63,12 @@ export function ConfidenceInsightCard({ value = 87 }) {
         <Text size="sm" fw={700} c="gray.0">
           Nivel de confianza
         </Text>
-        <Text size="xs" c="dimmed" lh={1.55} style={{ wordBreak: "break-word" }}>
+        <Text
+          size="xs"
+          c="dimmed"
+          lh={1.55}
+          className="confidence-insight-card__description"
+        >
           {description}
         </Text>
       </Stack>

@@ -1,7 +1,18 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from "react";
 import { AppShell } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { emotions } from "./data/emotions";
+import { DashboardLiveSessionProvider } from "./context/DashboardLiveSessionContext.jsx";
+import {
+  APPROXIMATE_PROFILE_IDLE,
+  EMOTION_ROWS_IDLE,
+  NEUTRAL_FALLBACK,
+} from "./dashboard/liveEmotionDefaults.js";
 import { getProfileAvatarById } from "./data/profileAvatars.js";
 import { DashboardCameraStage } from "./components/dashboard/DashboardCameraStage.jsx";
 import { DashboardLeftColumn } from "./components/dashboard/DashboardLeftColumn.jsx";
@@ -12,8 +23,32 @@ import { DashboardHeaderBar } from "./components/head/DashboardHeaderBar.jsx";
 import { SidebarMenu } from "./components/menu/SidebarMenu.jsx";
 import { useCamera } from "./hooks/useCamera";
 import { useClock } from "./hooks/useClock";
+import { useEmotionHistoryRecorder } from "./hooks/useEmotionHistoryRecorder.js";
+import { formatSecondsAsClock } from "./utils/formatDetectedDuration.js";
+import { seedEmotionHistoryFromPublicJson } from "./utils/emotionHistoryStore.js";
 
-const currentEmotion = emotions[0];
+const SESSION_TIMER_INITIAL = { pauseMs: 0, pauseBeganAt: null };
+
+/** Pausas del contador "Tiempo detectado" (ms en pausa ya cerradas + inicio de la pausa actual). */
+function sessionTimerReducer(state, action) {
+  switch (action.type) {
+    case "reset":
+      return SESSION_TIMER_INITIAL;
+    case "pause":
+      if (state.pauseBeganAt != null) return state;
+      return { ...state, pauseBeganAt: Date.now() };
+    case "resume": {
+      const began = state.pauseBeganAt;
+      if (began == null) return state;
+      return {
+        pauseMs: state.pauseMs + (Date.now() - began),
+        pauseBeganAt: null,
+      };
+    }
+    default:
+      return state;
+  }
+}
 
 function App() {
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] =
@@ -43,8 +78,78 @@ function App() {
   const [userAvatarId, setUserAvatarId] = useState("avatar-001");
   const [activeNav, setActiveNav] = useState("inicio");
   const { time, date } = useClock();
-  const { videoRef, status, startCamera, stopCamera } = useCamera();
+  const { videoRef, status, startCamera, stopCamera, cameraSessionStartedAt } =
+    useCamera();
   const headerAvatar = getProfileAvatarById(userAvatarId);
+
+  const [liveEmotion, setLiveEmotion] = useState(NEUTRAL_FALLBACK);
+  const [emotionRows, setEmotionRows] = useState(EMOTION_ROWS_IDLE);
+  const [approximateProfile, setApproximateProfile] = useState(
+    APPROXIMATE_PROFILE_IDLE,
+  );
+  const [sessionTimer, dispatchSessionTimer] = useReducer(
+    sessionTimerReducer,
+    SESSION_TIMER_INITIAL,
+  );
+  /** Segundos de sesión mostrados (congelados en pausa; avanzan al reanudar). */
+  const [detectedSessionSeconds, setDetectedSessionSeconds] = useState(0);
+
+  const pauseSessionTimer = useCallback(() => {
+    dispatchSessionTimer({ type: "pause" });
+  }, []);
+
+  const resumeSessionTimer = useCallback(() => {
+    dispatchSessionTimer({ type: "resume" });
+  }, []);
+
+  useEffect(() => {
+    if (status !== "ready") {
+      dispatchSessionTimer({ type: "reset" });
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "ready" || cameraSessionStartedAt == null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- al cortar cámara el contador vuelve a 0
+      setDetectedSessionSeconds(0);
+      return;
+    }
+    const { pauseMs, pauseBeganAt } = sessionTimer;
+    const tick = () => {
+      const ms =
+        pauseBeganAt != null
+          ? pauseBeganAt - cameraSessionStartedAt - pauseMs
+          : Date.now() - cameraSessionStartedAt - pauseMs;
+      setDetectedSessionSeconds(Math.max(0, Math.floor(ms / 1000)));
+    };
+    tick();
+    if (pauseBeganAt != null) {
+      return;
+    }
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [status, cameraSessionStartedAt, sessionTimer]);
+
+  const detectedSessionDuration = useMemo(
+    () => formatSecondsAsClock(detectedSessionSeconds),
+    [detectedSessionSeconds],
+  );
+
+  const emotionSessionHistory = useEmotionHistoryRecorder({
+    status,
+    cameraSessionStartedAt,
+    liveEmotion,
+    sessionTimer,
+  });
+
+  useEffect(() => {
+    void seedEmotionHistoryFromPublicJson();
+  }, []);
+
+  const sessionLiveEmotion =
+    status === "ready" ? liveEmotion : NEUTRAL_FALLBACK;
+  const sessionEmotionRows =
+    status === "ready" ? emotionRows : EMOTION_ROWS_IDLE;
 
   const handleProfileModalClose = () => {
     closeProfileModal();
@@ -171,41 +276,58 @@ function App() {
         <SidebarMenu activeNav={activeNav} onItemClick={handleNavClick} />
       </AppShell.Navbar>
 
-      <DashboardModals
-        statsModalOpened={statsModalOpened}
-        onStatsModalClose={handleStatsModalClose}
-        todayModalOpened={todayModalOpened}
-        onTodayModalClose={handleTodayModalClose}
-        historyModalOpened={historyModalOpened}
-        onHistoryModalClose={handleHistoryModalClose}
-        settingsModalOpened={settingsModalOpened}
-        onSettingsModalClose={closeSettingsModal}
-        profileModalOpened={profileModalOpened}
-        onProfileModalClose={handleProfileModalClose}
-        profileEditorKey={profileEditorKey}
-        userDisplayName={userDisplayName}
-        userAvatarId={userAvatarId}
-        onProfileSave={(next) => {
-          setUserDisplayName(next.name);
-          setUserAvatarId(next.avatarId);
-          handleProfileModalClose();
-        }}
-      />
+      <DashboardLiveSessionProvider
+        liveEmotion={sessionLiveEmotion}
+        setLiveEmotion={setLiveEmotion}
+        emotionRows={sessionEmotionRows}
+        setEmotionRows={setEmotionRows}
+        approximateProfile={approximateProfile}
+        setApproximateProfile={setApproximateProfile}
+        cameraSessionStartedAt={cameraSessionStartedAt}
+        detectedSessionSeconds={detectedSessionSeconds}
+        detectedSessionDuration={detectedSessionDuration}
+        pauseSessionTimer={pauseSessionTimer}
+        resumeSessionTimer={resumeSessionTimer}
+        emotionSessionHistory={emotionSessionHistory}
+      >
+        <DashboardModals
+          statsModalOpened={statsModalOpened}
+          onStatsModalClose={handleStatsModalClose}
+          todayModalOpened={todayModalOpened}
+          onTodayModalClose={handleTodayModalClose}
+          historyModalOpened={historyModalOpened}
+          onHistoryModalClose={handleHistoryModalClose}
+          settingsModalOpened={settingsModalOpened}
+          onSettingsModalClose={closeSettingsModal}
+          profileModalOpened={profileModalOpened}
+          onProfileModalClose={handleProfileModalClose}
+          profileEditorKey={profileEditorKey}
+          userDisplayName={userDisplayName}
+          userAvatarId={userAvatarId}
+          onProfileSave={(next) => {
+            setUserDisplayName(next.name);
+            setUserAvatarId(next.avatarId);
+            handleProfileModalClose();
+          }}
+        />
 
-      <AppShell.Main className="app-main-content">
-        <section className="dashboard-grid">
-          <DashboardLeftColumn emotion={currentEmotion} />
+        <AppShell.Main className="app-main-content">
+          <section className="dashboard-grid">
+            <DashboardLeftColumn />
 
-          <DashboardCameraStage
-            videoRef={videoRef}
-            status={status}
-            startCamera={startCamera}
-            stopCamera={stopCamera}
-          />
+            <DashboardCameraStage
+              videoRef={videoRef}
+              status={status}
+              startCamera={startCamera}
+              stopCamera={stopCamera}
+            />
 
-          <DashboardRightColumn onOpenEmotionsToday={openEmotionsTodayFromDashboard} />
-        </section>
-      </AppShell.Main>
+            <DashboardRightColumn
+              onOpenEmotionsToday={openEmotionsTodayFromDashboard}
+            />
+          </section>
+        </AppShell.Main>
+      </DashboardLiveSessionProvider>
 
       <AppShell.Footer className="shell-footer">
         <ShellFooterCredits />

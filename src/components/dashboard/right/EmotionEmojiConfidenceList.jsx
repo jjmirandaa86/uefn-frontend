@@ -18,32 +18,12 @@ const CONFIDENCE_BY_EMOTION_TOOLTIP = [
   "Sirve para ver cuánto confía el modelo, comparar emociones, mostrar gráficos más claros y reducir detecciones falsas.",
 ].join("\n");
 
-const BAR_COLOR_BY_KEY = {
-  happy: "#a855f7",
-  surprised: "#f59e0b",
-  neutral: "#94a3b8",
-  sad: "#38bdf8",
-  angry: "#ef4444",
-  disgusted: "#84cc16",
-  tired: "#f59e0b",
-};
-
 function barColor(row) {
-  return BAR_COLOR_BY_KEY[row.key] ?? row.color;
+  return row.color ?? "#94a3b8";
 }
 
-const ROW_LABEL_BY_KEY = {
-  happy: "Felicidad",
-  surprised: "Sorpresa",
-  neutral: "Neutral",
-  sad: "Tristeza",
-  angry: "Enojo",
-  disgusted: "Disgusto",
-  tired: "Cansancio",
-};
-
 function rowLabel(row) {
-  return ROW_LABEL_BY_KEY[row.key] ?? row.label;
+  return row.label;
 }
 
 function ConfidenceBar({ value, fillColor }) {
@@ -69,12 +49,14 @@ export function EmotionEmojiConfidenceList({
   items = defaultEmotions,
   title = "Confianza por emocion",
   showCta = true,
-  maxRows = 5,
+  maxRows,
   onViewFullAnalysis,
 }) {
-  const rows = [...items]
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, maxRows);
+  const sorted = [...items].sort((a, b) => b.confidence - a.confidence);
+  const rows =
+    typeof maxRows === "number" && maxRows >= 0
+      ? sorted.slice(0, maxRows)
+      : sorted;
 
   return (
     <Stack gap={0} className="emotion-confidence-list">
