@@ -7,7 +7,8 @@
     "dev": "nodemon --watch vite.config.js --watch index.html --exec \"vite --host 0.0.0.0\"",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "split-avatars": "node scripts/split-avatar-sprite.mjs"
   },
   "dependencies": {
     "@mantine/core": "^8.3.9",
@@ -19,12 +20,14 @@
     "recharts": "^3.6.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "nodemon": "^3.1.14",
+    "sharp": "^0.32.6",
     "vite": "^6.4.2"
   }
 }
