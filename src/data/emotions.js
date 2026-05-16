@@ -20,14 +20,14 @@ export const recentHistory = [
 ];
 
 export const emotionTrend = [
-  { time: '08:00', value: 42 },
-  { time: '09:00', value: 58 },
-  { time: '10:00', value: 72 },
-  { time: '11:00', value: 39 },
-  { time: '12:00', value: 85 },
-  { time: '13:00', value: 48 },
-  { time: '14:00', value: 66 },
-  { time: '15:00', value: 35 },
-  { time: '16:00', value: 73 },
-  { time: '18:00', value: 51 },
+  { time: '08:00', value: 42, emoji: '😐' },
+  { time: '09:00', value: 58, emoji: '😀' },
+  { time: '10:00', value: 72, emoji: '😀' },
+  { time: '11:00', value: 39, emoji: '😢' },
+  { time: '12:00', value: 85, emoji: '😀' },
+  { time: '13:00', value: 48, emoji: '😐' },
+  { time: '14:00', value: 66, emoji: '😲' },
+  { time: '15:00', value: 35, emoji: '😡' },
+  { time: '16:00', value: 73, emoji: '😀' },
+  { time: '18:00', value: 51, emoji: '😴' },
 ];

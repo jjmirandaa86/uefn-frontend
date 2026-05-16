@@ -1,9 +1,6 @@
 import { Avatar, Group, Stack, Text } from "@mantine/core";
 import { IconUser } from "@tabler/icons-react";
 
-/**
- * Fila compacta: avatar a la izquierda (alto ~2 lineas) y a la derecha edad arriba, genero abajo.
- */
 export function AvatarAgeGenderRow({
   age = "24 años",
   gender = "Masculino",

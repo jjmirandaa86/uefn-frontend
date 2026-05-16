@@ -4,7 +4,7 @@ import { IconDownload, IconTrash } from "@tabler/icons-react";
 import {
   PROFILE_AVATARS_FEMALE,
   PROFILE_AVATARS_MALE,
-} from "../../data/profileAvatars.js";
+} from "../../../data/profileAvatars.js";
 import { AvatarGenderScrollRow } from "./profile/AvatarGenderScrollRow.jsx";
 
 export function ProfileEditor({ initialName, initialAvatarId, onSave }) {

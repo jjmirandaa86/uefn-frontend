@@ -1,5 +1,5 @@
 import { Group, RingProgress, Stack, Text } from "@mantine/core";
-import { emotions } from "../../data/emotions";
+import { emotions } from "../../../data/emotions";
 
 export function QuickStatsBody() {
   return (

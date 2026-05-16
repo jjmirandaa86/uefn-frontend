@@ -1,19 +1,19 @@
 import { Text } from "@mantine/core";
-import { EmotionEmojiConfidenceList } from "../EmotionEmojiConfidenceList.jsx";
-import { DashboardSummaryStack } from "./DashboardSummaryStack.jsx";
+import { EmotionEmojiConfidenceList } from "./right/EmotionEmojiConfidenceList.jsx";
+import { DashboardSummaryStack } from "./right/DashboardSummaryStack.jsx";
 
 function GlassCard({ children, className = "" }) {
   return <section className={`glass-card ${className}`}>{children}</section>;
 }
 
-export function DashboardRightColumn() {
+export function DashboardRightColumn({ onOpenEmotionsToday }) {
   return (
     <aside className="right-column">
       <GlassCard>
-        <Text size="xs" fw={800} tt="uppercase" c="dimmed" mb="sm">
-          Confianza por emocion
-        </Text>
-        <EmotionEmojiConfidenceList />
+        <EmotionEmojiConfidenceList
+          title="Confianza por emocion"
+          onViewFullAnalysis={onOpenEmotionsToday}
+        />
       </GlassCard>
       <GlassCard>
         <Text size="xs" fw={800} tt="uppercase">

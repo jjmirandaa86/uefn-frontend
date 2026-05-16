@@ -1,5 +1,5 @@
 import { Text } from "@mantine/core";
-import { recentHistory } from "../../data/emotions";
+import { recentHistory } from "../../../data/emotions";
 
 export function RecentHistoryBody() {
   return (

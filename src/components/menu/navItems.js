@@ -8,8 +8,8 @@ import {
 
 export const NAV_ITEMS = [
   { id: "inicio", icon: IconHome, label: "Inicio" },
-  { id: "historial", icon: IconClock, label: "Historial" },
-  { id: "estadisticas", icon: IconChartDots, label: "Estadisticas" },
+  { id: "historial", icon: IconClock, label: "Historial Reciente" },
+  { id: "estadisticas", icon: IconChartDots, label: "Datos Históricos" },
   { id: "emociones-hoy", icon: IconCalendarEvent, label: "Emociones de hoy" },
   { id: "perfil", icon: IconUser, label: "Perfil" },
 ];
