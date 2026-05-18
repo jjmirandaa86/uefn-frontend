@@ -40,6 +40,7 @@ export default function GameMain() {
   const sensitivityRef = useRef({ ...DEFAULT_SENSITIVITY });
   const [facialLabel, setFacialLabel] = useState("—");
   const [hud, setHud] = useState(defaultHud);
+  const [gamePaused, setGamePaused] = useState(false);
 
   const sampleRef = controlsRef;
 
@@ -56,6 +57,20 @@ export default function GameMain() {
     sensitivityRef,
     onControls,
   });
+
+  const toggleGamePause = useCallback(() => {
+    const g = gameRef.current;
+    if (!g?.scene) return;
+    const key = "MainGameScene";
+    if (!g.scene.getScene(key)) return;
+    if (g.scene.isPaused(key)) {
+      g.scene.resume(key);
+      setGamePaused(false);
+    } else {
+      g.scene.pause(key);
+      setGamePaused(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (phase !== "calibration" && phase !== "playing") return;
@@ -102,7 +117,7 @@ export default function GameMain() {
       if (!parent || cancelled) return;
 
       const w = Math.max(320, parent.clientWidth || 640);
-      const h = Math.min(560, Math.max(300, window.innerHeight * 0.58));
+      const h = Math.min(580, Math.max(300, window.innerHeight * 0.62));
 
       const game = new Phaser.Game({
         type: Phaser.AUTO,
@@ -110,6 +125,9 @@ export default function GameMain() {
         width: w,
         height: h,
         backgroundColor: "#020617",
+        dom: {
+          createContainer: true,
+        },
         physics: {
           default: "arcade",
           arcade: { debug: false },
@@ -156,11 +174,13 @@ export default function GameMain() {
 
   const finishCalibration = (calib) => {
     calibRef.current = calib;
+    setGamePaused(false);
     setPhase("playing");
   };
 
   const restartToCalibration = useCallback(() => {
     calibRef.current = null;
+    setGamePaused(false);
     Object.assign(controlsRef.current, {
       moveX: 0,
       mouthOpen: 0,
@@ -192,7 +212,6 @@ export default function GameMain() {
           sampleRef={sampleRef}
           videoRef={videoRef}
           canvasRef={canvasRef}
-          hud={<GameHUD hud={hud} facialLabel={facialLabel} />}
           onDone={finishCalibration}
           onCancel={cancelCalibration}
         />
@@ -204,7 +223,12 @@ export default function GameMain() {
           <GameHUD
             hud={hud}
             facialLabel={facialLabel}
+            variant="bar"
             onRestart={phase === "playing" ? restartToCalibration : undefined}
+            onPauseToggle={
+              phase === "playing" ? toggleGamePause : undefined
+            }
+            gamePaused={phase === "playing" && gamePaused}
           />
           <WebcamOverlay videoRef={videoRef} canvasRef={canvasRef} />
         </div>

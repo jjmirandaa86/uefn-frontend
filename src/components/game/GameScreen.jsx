@@ -1,4 +1,4 @@
-import { Stack, Text, Title } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import GameMain from "../../game/GameMain.jsx";
 
 export function GameScreen() {

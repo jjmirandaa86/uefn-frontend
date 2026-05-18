@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "split-avatars": "node scripts/split-avatar-sprite.mjs",
-    "download-face-models": "node scripts/download-face-models.mjs"
+    "download-face-models": "node scripts/download-face-models.mjs",
+    "repair-mario-gif": "node scripts/repair-mario-gif-alpha.mjs"
   },
   "dependencies": {
     "@mantine/core": "^8.3.9",

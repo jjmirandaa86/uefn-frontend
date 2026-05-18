@@ -73,3 +73,20 @@
 .game-calibration-root {
   width: 100%;
 }
+
+/* GIF del jugador (capa DOM de Phaser): el navegador anima el GIF en bucle. */
+.game-canvas-host .game-player-gif {
+  width: 54px;
+  height: 78px;
+  display: block;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.game-canvas-host .game-boss-gif {
+  width: 108px;
+  height: 108px;
+  display: block;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
