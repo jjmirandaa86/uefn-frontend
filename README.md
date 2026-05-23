@@ -10,10 +10,12 @@ Documento pensado para lectura **académica y clara** (nivel aproximado de un jo
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Nombre comercial** | MoodVision AI                                                                                                                                                                                 |
 | **Tipo**             | Aplicación web (SPA): un solo documento que React va actualizando sin recargar la página entera.                                                                                              |
-| **Objetivo**         | Mostrar un **panel tipo dashboard** para reconocimiento emocional / estado de ánimo, con **cámara del navegador**, datos de ejemplo y ventanas (modales) de estadísticas, historial y perfil. |
+| **Objetivo**         | Panel tipo **dashboard** para reconocimiento emocional con **cámara del navegador**, conexión a un **backend Node** (capturas e historial), un **minijuego** controlado con la cara y ventanas (modales) de estadísticas, historial y perfil. |
 | **Idioma de la UI**  | Español (textos de pantalla).                                                                                                                                                                 |
 
-Los parámetros de la app (URL del backend, límites de listados, umbrales de captura) están definidos en `src/config/appSettingsFields.js` y se pueden editar en el modal **Configuración** (rueda de ajustes), con valores por defecto desde `.env`.
+Los parámetros de la app (URL del backend, límites de listados, umbrales de captura, ruta de modelos IA) están definidos en `src/config/appSettingsFields.js` y se pueden editar en el modal **Configuración** (rueda de ajustes), con valores por defecto desde `.env`.
+
+> **Importante:** para ver emociones en vivo, historial y fotos guardadas necesitas el **backend** (`uefn-backend`) en marcha y los **modelos de face-api.js** descargados en `public/models/` (ver sección 8).
 
 ---
 
@@ -27,14 +29,27 @@ flowchart LR
   subgraph App["Navegador"]
     S[Splash 3s]
     D[Dashboard MoodVision]
+    G[Juego Phaser]
+  end
+  subgraph IA["En el cliente"]
+    F[face-api.js]
+  end
+  subgraph API["Servidor"]
+    B[uefn-backend]
   end
   U --> S --> D
-  D --> Cam[Cámara opcional]
-  D --> Dat[Datos demo emociones]
+  D --> F
+  F --> D
+  D -->|capturas e historial| B
+  D --> G
+  G --> F
 ```
 
 - Primero ves una **pantalla de carga** con el nombre de la app.
 - Luego entras al **dashboard**: barra superior, menú lateral, zona central con vídeo y tarjetas informativas.
+- La cámara analiza tu rostro con **face-api.js** (emociones, edad/género aproximados).
+- Si el backend está activo, la app **guarda capturas** y **historial** automáticamente cuando la emoción es clara y estable.
+- Desde el menú puedes abrir el **juego** (estilo plataformas) y mover al personaje con gestos faciales.
 
 ---
 
@@ -57,21 +72,35 @@ Archivos en el repo: `docs/splash.png`, `docs/dashboard.png`, `docs/modal-perfil
 ```text
 uefn-frontend/
 ├── docs/                   # Guía visual: splash, dashboard, modal (PNG)
-├── public/                 # Archivos estáticos (ej. avatares PNG)
-├── scripts/                # Utilidades (ej. recorte de sprites de avatares)
+├── public/
+│   └── models/             # Pesos de face-api.js (descargar con npm script)
+├── scripts/
+│   └── download-face-models.mjs   # Descarga automática de modelos IA
 ├── src/
-│   ├── App.jsx             # Pantalla principal: shell + modales + grid
+│   ├── App.jsx             # Pantalla principal: shell + modales + grid + juego
 │   ├── AppRoot.jsx         # Proveedor Mantine + splash inicial
 │   ├── main.jsx            # Arranque de React
-│   ├── styles.css          # Estilos globales / “look” del dashboard
+│   ├── styles.css          # Estilos globales del dashboard
 │   ├── config/
-│   │   └── appSettingsFields.js  # Catálogo de parámetros VITE_* (API, captura, listados)
-│   ├── components/         # Piezas de interfaz reutilizables
-│   ├── hooks/              # Lógica reutilizable (reloj, cámara)
-│   ├── data/               # Datos de demostración (emociones, avatares)
-│   └── services/           # Servicios (preparado para IA en cliente, etc.)
-├── vite.config.js          # Configuración de Vite + HTTPS de desarrollo
-└── package.json            # Dependencias y comandos npm
+│   │   └── appSettingsFields.js   # Catálogo de parámetros VITE_*
+│   ├── context/
+│   │   └── DashboardLiveSessionContext.jsx  # Estado en vivo (emoción, filas, perfil)
+│   ├── components/
+│   │   ├── dashboard/      # Cámara, columnas, modales
+│   │   ├── game/           # Contenedor del juego en el menú
+│   │   ├── head/           # Cabecera (reloj, usuario, ajustes)
+│   │   └── menu/           # Menú lateral
+│   ├── game/               # Minijuego Phaser + control facial
+│   │   ├── GameMain.jsx
+│   │   ├── scenes/
+│   │   ├── faceDetection/
+│   │   └── hooks/useFaceGameControls.js
+│   ├── hooks/              # Cámara, historial, momentos divertidos, reloj
+│   ├── data/               # Catálogo de emociones y avatares
+│   ├── services/           # faceApi, emotionHistoryApi, funMomentsApi
+│   └── utils/              # Captura automática, políticas, URLs de media
+├── vite.config.js
+└── package.json
 ```
 
 ### Herramientas principales (stack)
@@ -82,22 +111,58 @@ uefn-frontend/
 | **Vite**                                      | Empaqueta y sirve el proyecto muy rápido en desarrollo.                                    |
 | **Mantine**                                   | Componentes ya hechos (botones, modales, tipografía…).                                     |
 | **Tabler Icons**                              | Iconos vectoriales del menú y cabecera.                                                    |
+| **face-api.js**                               | Detecta rostro, expresiones y landmarks en el navegador.                                   |
+| **Phaser 3**                                  | Motor del minijuego (escenas, física, sprites).                                            |
+| **Recharts**                                  | Gráficos en modales (barras del día, estadísticas).                                         |
 | **HTTPS en dev** (`@vitejs/plugin-basic-ssl`) | Ayuda a probar la **cámara** en red local (los navegadores suelen exigir contexto seguro). |
-
-En `package.json` también aparecen **face-api.js** y **Recharts** como dependencias; el código actual del dashboard se apoya sobre todo en **datos de ejemplo** y en la cámara vía `useCamera`. Esas librerías pueden usarse en evoluciones futuras (por ejemplo modelos en `/public/models`).
 
 ---
 
-## 4. Cómo se organiza la pantalla principal
+## 4. Cómo funciona la detección y la captura (nuevo)
 
-No hay “varias páginas” con rutas distintas: es **una sola vista** con **zonas** y **ventanas emergentes** (modales).
+Cuando activas la cámara, el componente `DashboardCameraStage` lee el vídeo en bucle y llama a `face-api.js`. Los resultados se muestran en las tarjetas laterales y, si cumples unas **reglas de calidad**, se envía una foto al backend.
+
+```mermaid
+sequenceDiagram
+  participant Cam as Cámara
+  participant FE as face-api.js
+  participant UI as Dashboard
+  participant Pol as Política de captura
+  participant API as uefn-backend
+
+  Cam->>FE: Frame de vídeo
+  FE->>UI: Emoción + confianza + filas
+  FE->>UI: Edad/género aproximados
+  loop Cada frame estable
+    UI->>Pol: ¿Emoción clara y sostenida?
+    Pol-->>UI: Sí / No
+  end
+  Pol->>API: POST /api/captures (foto + JSON)
+  API-->>UI: Confirmación / error
+```
+
+| Concepto | Dónde está | Qué significa para el usuario |
+| -------- | ---------- | ----------------------------- |
+| **Emoción en vivo** | Tarjeta izquierda + lista derecha | Feliz, triste, neutral, etc., con % de confianza. |
+| **Tiempo detectado** | Tarjeta izquierda | Cronómetro de sesión con la cámara activa (se pausa si pausas la detección). |
+| **Captura automática** | `src/utils/emotionCapturePolicy.js` | Solo guarda si la emoción es fuerte, dominante y se mantiene unos segundos (configurable). |
+| **Historial en backend** | `useEmotionHistoryRecorder` | Registra entradas mientras detectas (POST `/api/history`). |
+| **Momentos divertidos** | Modal + `funMomentsApi.js` | Galería de fotos procesadas (GET `/api/captures/processed`). |
+
+Umbrales editables (ejemplos): retardo antes de capturar, confianza mínima, diferencia entre 1.ª y 2.ª emoción. Ver `.env.example` y el modal **Configuración**.
+
+---
+
+## 5. Cómo se organiza la pantalla principal
+
+No hay “varias páginas” con rutas distintas en el sentido clásico: es **una sola vista** con **zonas**, **ventanas emergentes** (modales) y una **vista de juego** que sustituye el grid del dashboard.
 
 ```mermaid
 flowchart TB
   subgraph Shell["AppShell (marco de la app)"]
     H[Header: hora, usuario, ajustes]
     N[Navbar: menú lateral]
-    M[Main: grid del dashboard]
+    M[Main: dashboard O juego]
     F[Footer: créditos del proyecto]
   end
   H --- N
@@ -105,91 +170,75 @@ flowchart TB
   M --- F
 ```
 
-### Mapa del dashboard (contenido del `Main`)
+### Mapa del dashboard (vista Inicio)
 
 ```mermaid
 flowchart LR
   subgraph Grid["dashboard-grid"]
-    L["Columna izquierda<br/>tarjetas: emoción, acciones"]
-    C["Centro<br/>cámara / vista previa"]
-    R["Columna derecha<br/>confianza + resumen"]
+    L["Columna izquierda<br/>emoción, tiempo, edad/género"]
+    C["Centro<br/>cámara + detección en vivo"]
+    R["Columna derecha<br/>confianza + resumen del día"]
   end
   L --- C --- R
 ```
 
 | Zona          | Qué muestra                                                                                               | Notas                                         |
 | ------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| **Izquierda** | Emoción “actual”, tiempo simulado, fila edad/género, barra de confianza, interruptores y acciones rápidas | Datos de demo (`src/data/emotions.js`, etc.). |
-| **Centro**    | Vídeo de cámara + mensajes si no hay permiso o no es HTTPS                                                | Botón “Activar cámara”.                       |
-| **Derecha**   | Lista de confianza por emoción + bloque “Resumen” con cifras de ejemplo                                   | Componente `DashboardRightColumn`.            |
+| **Izquierda** | Emoción actual, tiempo de sesión, edad/género aproximados, barra de confianza, acciones                   | Datos **en vivo** desde face-api.js.          |
+| **Centro**    | Vídeo de cámara + controles (activar, pausar detección, captura manual opcional)                          | Requiere HTTPS en desarrollo.                 |
+| **Derecha**   | Lista de confianza por emoción + resumen del día (desde API si hay backend)                              | Hooks `useTodayEmotionSummary`, etc.          |
+
+### Vista Juego (menú **Juego**)
+
+```mermaid
+flowchart LR
+  subgraph Juego["src/game/"]
+    P[Phaser: MainGameScene]
+    W[Webcam + landmarks]
+    C[Controles faciales]
+  end
+  W --> C --> P
+```
+
+- Motor **Phaser 3** con escena tipo plataformas (monedas, vidas, jefe).
+- La **webcam** detecta puntos del rostro; `landmarksToControls` traduce gestos en movimiento, salto, sprint o disparo.
+- Pantallas de inicio, calibración, victoria y game over en `GameUI.jsx`.
 
 ---
 
-## 5. Menú lateral: qué abre cada ítem
+## 6. Menú lateral: qué abre cada ítem
 
-El menú está definido en `src/components/menu/navItems.js`. Al pulsar un ítem suele **abrir un modal** o **volver a inicio**.
+El menú está definido en `src/components/menu/navItems.js`.
 
 ```mermaid
 flowchart TD
-  IN["Inicio"] --> CERRAR["Cierra modales y menú móvil"]
-  EST["Estadísticas"] --> M1["Modal: estadísticas rápidas"]
-  EM["Emociones de hoy"] --> M2["Modal: gráfico de barras del día"]
-  HIS["Historial"] --> M3["Modal: lista reciente"]
-  PER["Perfil"] --> M4["Modal: nombre + avatares"]
+  IN["Inicio"] --> DASH["Dashboard con cámara"]
+  HIS["Historial reciente"] --> M1["Modal: lista desde API"]
+  HOY["Emociones de hoy"] --> M2["Modal: gráfico de barras"]
+  EST["Datos históricos"] --> M3["Modal: estadísticas agregadas"]
+  JUE["Juego"] --> VG["Vista Phaser a pantalla completa en Main"]
+  FUN["Momentos divertidos"] --> M4["Modal: galería de capturas procesadas"]
+  PER["Perfil"] --> M5["Modal: nombre + avatares"]
 ```
 
-| Ícono (idea) | Entrada del menú     | Efecto principal                                        |
-| ------------ | -------------------- | ------------------------------------------------------- |
-| Casa         | **Inicio**           | Cierra todo y deja solo el dashboard.                   |
-| Reloj        | **Historial**        | Lista de emociones recientes (demo).                    |
-| Gráfico      | **Estadísticas**     | Gráfico circular + lista de porcentajes (demo).         |
-| Calendario   | **Emociones de hoy** | Mini “gráfico de tendencia” del día (demo).             |
-| Persona      | **Perfil**           | Editar nombre y avatar; **Guardar** actualiza cabecera. |
+| Ícono (idea) | Entrada del menú        | Efecto principal                                        |
+| ------------ | ----------------------- | ------------------------------------------------------- |
+| Casa         | **Inicio**              | Cierra modales y muestra el dashboard.                  |
+| Reloj        | **Historial reciente**  | Lista de emociones guardadas (backend).                 |
+| Calendario   | **Emociones de hoy**  | Gráfico de barras del día (Recharts + API).             |
+| Gráfico      | **Datos históricos**    | Resumen estadístico del historial.                      |
+| Persona      | **Juego**               | Cambia el contenido central al minijuego Phaser.        |
+| Cara feliz   | **Momentos divertidos** | Miniaturas de fotos procesadas; descarga opcional.    |
+| Persona      | **Perfil**              | Editar nombre y avatar; **Guardar** actualiza cabecera. |
 
 ---
 
-## 6. Otros puntos de interacción
+## 7. Otros puntos de interacción
 
 | Elemento                        | Qué hace                                                                                                                |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Rueda de ajustes** (cabecera) | Abre el modal **Configuración**: URL del backend, límites de historial/momentos divertidos y umbrales de captura automática (valores desde `.env`, editables y guardados en el navegador). |
+| **Rueda de ajustes** (cabecera) | Abre **Configuración**: URL del backend, límites de historial/momentos divertidos y umbrales de captura automática.   |
 | **Burgers** (menú)              | En móvil abre/cierra el lateral; en escritorio colapsa/expande el navbar.                                               |
-
----
-
-## 7. Flujo del usuario (paso a paso)
-
-```mermaid
-sequenceDiagram
-  participant Usuario
-  participant Navegador
-  participant App as MoodVision App
-
-  Usuario->>Navegador: Abre la URL del proyecto
-  Navegador->>App: Carga splash (~3 s)
-  App->>Usuario: Muestra dashboard
-
-  opt Cámara
-    Usuario->>App: Pulsa Activar cámara
-    App->>Navegador: Pide permiso getUserMedia
-    Navegador-->>Usuario: Permite o bloquea
-  end
-
-  opt Explorar datos
-    Usuario->>App: Menú Estadísticas / Historial / Emociones hoy
-    App->>Usuario: Abre modal con contenido demo
-    Usuario->>App: Cierra modal o va a Inicio
-  end
-
-  opt Perfil
-    Usuario->>App: Menú Perfil
-    App->>Usuario: Modal perfil
-    Usuario->>App: Guardar
-    App->>Usuario: Actualiza nombre y avatar en cabecera
-  end
-```
-
-En una frase: **entras → ves el panel → (opcional) activas cámara → navegas por modales desde el menú o ajustes → puedes personalizar perfil.**
 
 ---
 
@@ -197,34 +246,104 @@ En una frase: **entras → ves el panel → (opcional) activas cámara → naveg
 
 Necesitas **Node.js** (versión LTS recomendada) y npm.
 
+### Paso 1 — Instalar y modelos de IA
+
 ```bash
 cd uefn-frontend
 npm install
+npm run download-face-models
+```
+
+Esto descarga los pesos de **face-api.js** a `public/models/` (detector, expresiones, landmarks, etc.).
+
+### Paso 2 — Variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+| Variable (ejemplo) | Para qué sirve |
+| ------------------ | -------------- |
+| `VITE_BACKEND_URL` | URL del API Node (por defecto `http://localhost:3006`) |
+| `VITE_FACE_API_MODELS_URL` | Carpeta de modelos (por defecto `/models`) |
+| `VITE_EMOTION_HISTORY_RECENT_LIMIT` | Cuántas filas pide el historial reciente |
+| `VITE_FUN_MOMENTS_PAGE_SIZE` | Fotos por página en momentos divertidos |
+| `VITE_EMOTION_CAPTURE_*` | Umbrales de la captura automática |
+
+### Paso 3 — Backend (recomendado)
+
+En otra terminal, arranca **uefn-backend** en el puerto configurado. Sin backend verás la detección en pantalla, pero no se guardarán capturas ni historial.
+
+### Paso 4 — Desarrollo
+
+```bash
 npm run dev
 ```
 
-- El servidor de desarrollo usa **HTTPS** (certificado de desarrollo). El navegador puede mostrar una advertencia la primera vez: es normal en local.
-- Por defecto el script escucha en **todas las interfaces** (`0.0.0.0`), útil si abres la app desde otro dispositivo en la misma red.
+- El servidor usa **HTTPS** (certificado de desarrollo). El navegador puede avisar la primera vez: es normal en local.
+- Escucha en **todas las interfaces** (`0.0.0.0`), útil si abres la app desde otro dispositivo en la misma red.
 
 Otros comandos útiles:
 
-| Comando                 | Para qué sirve                                                   |
-| ----------------------- | ---------------------------------------------------------------- |
-| `npm run build`         | Genera la versión optimizada en `dist/`.                         |
-| `npm run preview`       | Previsualiza el build localmente.                                |
-| `npm run lint`          | Revisa el código con ESLint.                                     |
+| Comando                         | Para qué sirve                                                   |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `npm run build`                 | Genera la versión optimizada en `dist/`.                         |
+| `npm run preview`               | Previsualiza el build localmente.                                |
+| `npm run lint`                  | Revisa el código con ESLint.                                     |
+| `npm run download-face-models`  | Vuelve a bajar los modelos si faltan archivos en `public/models/`. |
 
-Variables opcionales (Vite): copia `.env.example` a `.env` (prefijo `VITE_`). Lista completa y descripciones en `src/config/appSettingsFields.js`; varias también se cambian desde el modal **Configuración** sin reiniciar el servidor (se persisten en `localStorage` vía `src/utils/appSettingsStore.js`).
+Varias variables también se cambian desde el modal **Configuración** sin reiniciar el servidor (se guardan en `localStorage` vía `src/utils/appSettingsStore.js`).
 
 ---
 
-## 9. Créditos y contexto académico
+## 9. Flujo del usuario (paso a paso)
+
+```mermaid
+sequenceDiagram
+  participant Usuario
+  participant Navegador
+  participant App as MoodVision App
+  participant API as Backend
+
+  Usuario->>Navegador: Abre la URL del proyecto
+  Navegador->>App: Carga splash (~3 s)
+  App->>Usuario: Muestra dashboard
+
+  opt Cámara y emociones
+    Usuario->>App: Activar cámara
+    App->>Navegador: getUserMedia + face-api.js
+    App->>Usuario: Emoción y confianza en vivo
+    App->>API: Historial + capturas si cumplen política
+  end
+
+  opt Modales
+    Usuario->>App: Historial / Hoy / Estadísticas / Momentos
+    App->>API: GET datos
+    App->>Usuario: Gráficos y listas
+  end
+
+  opt Juego
+    Usuario->>App: Menú Juego
+    App->>Usuario: Phaser + control facial
+  end
+
+  opt Perfil
+    Usuario->>App: Guardar perfil
+    App->>Usuario: Actualiza cabecera
+  end
+```
+
+En una frase: **entras → activas cámara → ves emociones en vivo → (con backend) se guardan datos → exploras modales o juegas con la cara → personalizas perfil.**
+
+---
+
+## 10. Créditos y contexto académico
 
 En el **pie de página** de la app se indica que el proyecto de grado está desarrollado para **Domenica Miranda**, con mención al tema de reconocimiento de gestos faciales y videojuegos interactivos, y enlace a **Acertijo.dev**.
 
 ---
 
-## 10. Resumen visual final
+## 11. Resumen visual final
 
 ```mermaid
 mindmap
@@ -235,17 +354,23 @@ mindmap
     Dashboard
       Header reloj + usuario
       Menú lateral
-      Cámara centro
-      Tarjetas laterales
+      Cámara + face-api.js
+      Captura automática
+      Columnas en vivo
+    Backend
+      Capturas foto
+      Historial emociones
+      Momentos procesados
+    Juego
+      Phaser 3
+      Control por landmarks
     Modales
-      Estadísticas
+      Datos históricos
       Emociones hoy
-      Historial
+      Historial reciente
+      Momentos divertidos
       Configuración
       Perfil
-    Datos
-      Demo emociones
-      Avatares estáticos
 ```
 
-Ya existen referencias visuales en `docs/` (sección 2.1). Para sustituirlas por **capturas reales**, guarda tus PNG con el mismo nombre o actualiza las rutas en esta sección.
+Ya existen referencias visuales en `docs/` (sección 2.1). Para sustituirlas por **capturas reales** (incluido el juego o el modal de momentos divertidos), guarda tus PNG en `docs/` y actualiza las rutas en esta sección.
