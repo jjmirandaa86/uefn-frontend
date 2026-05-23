@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+escape_js() {
+	printf '%s' "$1" | sed "s/\\\\/\\\\\\\\/g; s/'/\\\\'/g"
+}
+
+cat > /usr/share/nginx/html/config.js <<EOF
+window.__ENV__ = {
+  VITE_BACKEND_URL: '$(escape_js "${VITE_BACKEND_URL:-}")',
+  VITE_FACE_API_MODELS_URL: '$(escape_js "${VITE_FACE_API_MODELS_URL:-}")',
+  VITE_EMOTION_HISTORY_RECENT_LIMIT: '$(escape_js "${VITE_EMOTION_HISTORY_RECENT_LIMIT:-}")',
+  VITE_FUN_MOMENTS_PAGE_SIZE: '$(escape_js "${VITE_FUN_MOMENTS_PAGE_SIZE:-}")',
+  VITE_EMOTION_CAPTURE_DELAY_MS: '$(escape_js "${VITE_EMOTION_CAPTURE_DELAY_MS:-}")',
+  VITE_EMOTION_CAPTURE_MIN_CONFIDENCE: '$(escape_js "${VITE_EMOTION_CAPTURE_MIN_CONFIDENCE:-}")',
+  VITE_EMOTION_CAPTURE_NEUTRAL_MIN_CONFIDENCE: '$(escape_js "${VITE_EMOTION_CAPTURE_NEUTRAL_MIN_CONFIDENCE:-}")',
+  VITE_EMOTION_CAPTURE_MIN_DOMINANCE: '$(escape_js "${VITE_EMOTION_CAPTURE_MIN_DOMINANCE:-}")',
+  VITE_EMOTION_CAPTURE_MIN_SCORE: '$(escape_js "${VITE_EMOTION_CAPTURE_MIN_SCORE:-}")',
+  VITE_EMOTION_CAPTURE_CONFIDENCE_HYSTERESIS: '$(escape_js "${VITE_EMOTION_CAPTURE_CONFIDENCE_HYSTERESIS:-}")'
+};
+EOF
+
+exec nginx -g "daemon off;"
