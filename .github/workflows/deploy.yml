@@ -1,0 +1,59 @@
+name: CI/CD Deploy Web Acertijo.dev
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}:latest
+          docker build -t $IMAGE .
+          docker push $IMAGE
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Server
+        run: |
+          ssh -i ~/.ssh/id_rsa root@${{ secrets.SERVER_IP }} << EOF
+            cd /app/projects || exit 1
+
+            echo "🌐 Creating Docker network if not exists..."
+            docker network inspect app_network >/dev/null 2>&1 || docker network create app_network
+
+            echo "📦 Pulling image..."
+            docker pull ghcr.io/${{ github.repository }}:latest
+
+            echo "🛑 Stopping old container..."
+            docker stop acertijo || true
+            docker rm acertijo || true
+
+            echo "🚀 Running new container..."
+            docker run -d \
+              --name acertijo \
+              --network app_network \
+              --restart unless-stopped \
+              ghcr.io/${{ github.repository }}:latest
+
+            echo "✅ Deploy completed"
+          EOF
