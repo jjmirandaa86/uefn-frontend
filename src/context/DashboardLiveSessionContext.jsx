@@ -16,7 +16,8 @@ export function DashboardLiveSessionProvider({
   detectedSessionDuration,
   pauseSessionTimer,
   resumeSessionTimer,
-  emotionSessionHistory,
+  currentFaceUser,
+  setCurrentFaceUser,
 }) {
   const value = useMemo(
     () => ({
@@ -31,7 +32,8 @@ export function DashboardLiveSessionProvider({
       detectedSessionDuration,
       pauseSessionTimer,
       resumeSessionTimer,
-      emotionSessionHistory,
+      currentFaceUser,
+      setCurrentFaceUser,
     }),
     [
       liveEmotion,
@@ -45,7 +47,8 @@ export function DashboardLiveSessionProvider({
       detectedSessionDuration,
       pauseSessionTimer,
       resumeSessionTimer,
-      emotionSessionHistory,
+      currentFaceUser,
+      setCurrentFaceUser,
     ],
   );
 

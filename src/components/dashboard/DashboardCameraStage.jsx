@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Badge,
   Box,
@@ -23,6 +23,16 @@ import {
   NEUTRAL_FALLBACK,
 } from "../../dashboard/liveEmotionDefaults.js";
 import { detectFacesLandmarksExpressionsFromVideo } from "../../services/faceApi.js";
+import {
+  faceEmotionSlotKey,
+  sendEmotionCaptureToBackend,
+} from "../../utils/emotionCapture.js";
+import {
+  evaluateEmotionCaptureReadiness,
+  getEmotionCapturePolicy,
+  isConfidenceStillStable,
+} from "../../utils/emotionCapturePolicy.js";
+import { createFaceTracker } from "../../utils/faceTracker.js";
 import { mapFaceApiToEmotion, mapFaceExpressionsToEmotionRows } from "../../utils/mapFaceApiToEmotion.js";
 
 function pickPrimaryFace(results) {
@@ -53,35 +63,7 @@ function statusSubtitle(status) {
   }
 }
 
-function DcsSparkline() {
-  const gradId = `dcsSparkFill-${useId().replace(/:/g, "")}`;
-  const pts = "2,34 18,30 34,32 50,22 66,26 82,12 98,16";
-  return (
-    <svg
-      className="dcs-sparkline"
-      viewBox="0 0 100 40"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#a855f7" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon fill={`url(#${gradId})`} points={`0,40 ${pts} 100,40`} />
-      <polyline
-        fill="none"
-        stroke="#c4b5fd"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={pts}
-      />
-      <circle cx="98" cy="16" r="2.8" fill="#f8fafc" />
-    </svg>
-  );
-}
+const CAPTURE_FILENAME_NOTICE_MS = 3000;
 
 export function DashboardCameraStage({
   videoRef,
@@ -96,14 +78,55 @@ export function DashboardCameraStage({
     setApproximateProfile,
     pauseSessionTimer,
     resumeSessionTimer,
+    setCurrentFaceUser,
   } = useDashboardLiveSession();
+  const lastFaceUserEmittedRef = useRef(null);
   const landmarksCanvasRef = useRef(null);
   const facialPointsEnabledRef = useRef(true);
   const isPreviewPausedRef = useRef(false);
   const approximateEmitRef = useRef({ ageYears: null, gender: null });
+  const faceTrackerRef = useRef(null);
+  /** Rostro + emoción ya guardados o descartados (sesión / disco). */
+  const capturedFaceEmotionsRef = useRef(new Set());
+  const captureInFlightRef = useRef(new Set());
+  /**
+   * @type {React.MutableRefObject<{
+   *   slotKey: string;
+   *   since: number;
+   *   peakConfidence: number;
+   *   minConfidence: number;
+   * } | null>}
+   */
+  const capturePendingRef = useRef(null);
+  const capturePolicy = getEmotionCapturePolicy();
+  const [captureNoticeFilename, setCaptureNoticeFilename] = useState(null);
+  const captureNoticeTimerRef = useRef(null);
   const [facialPointsEnabled, setFacialPointsEnabled] = useState(true);
   const [isPreviewPaused, setIsPreviewPaused] = useState(false);
   const prevStatusForFacialRef = useRef(status);
+
+  const flashCaptureFilename = useCallback((filename) => {
+    if (!filename) return;
+    if (captureNoticeTimerRef.current) {
+      clearTimeout(captureNoticeTimerRef.current);
+    }
+    setCaptureNoticeFilename(filename);
+    captureNoticeTimerRef.current = setTimeout(() => {
+      setCaptureNoticeFilename(null);
+      captureNoticeTimerRef.current = null;
+    }, CAPTURE_FILENAME_NOTICE_MS);
+  }, []);
+
+  const flashCaptureFilenameRef = useRef(flashCaptureFilename);
+  flashCaptureFilenameRef.current = flashCaptureFilename;
+
+  useEffect(() => {
+    return () => {
+      if (captureNoticeTimerRef.current) {
+        clearTimeout(captureNoticeTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     facialPointsEnabledRef.current = facialPointsEnabled;
@@ -126,6 +149,21 @@ export function DashboardCameraStage({
       // eslint-disable-next-line react-hooks/set-state-in-effect -- al cortar la cámara debe desactivarse la pausa local
       setIsPreviewPaused(false);
       isPreviewPausedRef.current = false;
+      faceTrackerRef.current?.reset();
+      capturedFaceEmotionsRef.current.clear();
+      captureInFlightRef.current.clear();
+      capturePendingRef.current = null;
+      setCaptureNoticeFilename(null);
+      if (captureNoticeTimerRef.current) {
+        clearTimeout(captureNoticeTimerRef.current);
+        captureNoticeTimerRef.current = null;
+      }
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (status === "ready" && !faceTrackerRef.current) {
+      faceTrackerRef.current = createFaceTracker();
     }
   }, [status]);
 
@@ -222,7 +260,18 @@ export function DashboardCameraStage({
             setApproximateProfile({ hasFace: true, ageYears, gender });
           };
 
+          const emitFaceUser = (faceId) => {
+            if (lastFaceUserEmittedRef.current === faceId) return;
+            lastFaceUserEmittedRef.current = faceId;
+            setCurrentFaceUser(faceId);
+          };
+
           if (!primary) {
+            capturePendingRef.current = null;
+            if (lastFaceUserEmittedRef.current !== null) {
+              lastFaceUserEmittedRef.current = null;
+              setCurrentFaceUser(null);
+            }
             emitApproximateIdle();
             setLiveEmotion((prev) => {
               const next = NEUTRAL_FALLBACK;
@@ -242,6 +291,10 @@ export function DashboardCameraStage({
             emitApproximateFromFace(primary);
 
             if (!primary?.expressions) {
+              if (lastFaceUserEmittedRef.current !== null) {
+                lastFaceUserEmittedRef.current = null;
+                setCurrentFaceUser(null);
+              }
               setLiveEmotion((prev) => {
                 const next = NEUTRAL_FALLBACK;
                 if (
@@ -277,6 +330,126 @@ export function DashboardCameraStage({
                 }
                 return rows;
               });
+
+              const tracker = faceTrackerRef.current;
+              const descriptor = primary.descriptor;
+              const box = primary.detection?.box;
+              const captureReadiness = evaluateEmotionCaptureReadiness(
+                primary.expressions,
+              );
+
+              if (
+                tracker &&
+                descriptor &&
+                box &&
+                captureReadiness.ready &&
+                !cancelled
+              ) {
+                const { faceId, isStable } = tracker.resolveFaceId(descriptor);
+                if (isStable) {
+                  emitFaceUser(faceId);
+                  const emotionForCapture = captureReadiness.emotion;
+                  const slotKey = faceEmotionSlotKey(
+                    faceId,
+                    emotionForCapture.key,
+                  );
+                  const alreadySaved =
+                    capturedFaceEmotionsRef.current.has(slotKey);
+                  const saving = captureInFlightRef.current.has(slotKey);
+
+                  if (alreadySaved || saving) {
+                    if (capturePendingRef.current?.slotKey === slotKey) {
+                      capturePendingRef.current = null;
+                    }
+                  } else {
+                    const now = Date.now();
+                    const pending = capturePendingRef.current;
+                    const minConf = captureReadiness.minConfidence;
+                    const conf = captureReadiness.confidence;
+
+                    if (
+                      pending &&
+                      pending.slotKey === slotKey &&
+                      !isConfidenceStillStable(
+                        conf,
+                        pending.minConfidence,
+                        capturePolicy.confidenceHysteresis,
+                      )
+                    ) {
+                      capturePendingRef.current = null;
+                    }
+
+                    const active = capturePendingRef.current;
+                    if (!active || active.slotKey !== slotKey) {
+                      capturePendingRef.current = {
+                        slotKey,
+                        since: now,
+                        peakConfidence: conf,
+                        minConfidence: minConf,
+                      };
+                    } else {
+                      active.peakConfidence = Math.max(
+                        active.peakConfidence,
+                        conf,
+                      );
+                      if (
+                        now - active.since >= capturePolicy.delayMs
+                      ) {
+                        const peak = active.peakConfidence;
+                        capturePendingRef.current = null;
+                        captureInFlightRef.current.add(slotKey);
+                        void sendEmotionCaptureToBackend({
+                          video,
+                          box,
+                          faceId,
+                          emotion: {
+                            ...emotionForCapture,
+                            confidence: peak,
+                          },
+                          capturedAt: now,
+                        })
+                        .then((result) => {
+                          if (result.ok) {
+                            capturedFaceEmotionsRef.current.add(slotKey);
+                            const name =
+                              result.metadata?.nombreArchivo ?? null;
+                            if (name) flashCaptureFilenameRef.current(name);
+                            if (result.skipped) {
+                              console.info(
+                                "[emotion-capture] backend ya tenía:",
+                                name,
+                              );
+                            } else {
+                              console.info(
+                                "[emotion-capture] enviada al backend:",
+                                name,
+                              );
+                            }
+                          } else {
+                            console.warn("[emotion-capture]", result.error);
+                          }
+                        })
+                        .catch((err) => {
+                          console.error("[emotion-capture]", err);
+                        })
+                        .finally(() => {
+                          captureInFlightRef.current.delete(slotKey);
+                        });
+                      }
+                    }
+                  }
+                } else {
+                  if (lastFaceUserEmittedRef.current !== null) {
+                    lastFaceUserEmittedRef.current = null;
+                    setCurrentFaceUser(null);
+                  }
+                  if (capturePendingRef.current) {
+                    capturePendingRef.current = null;
+                  }
+                }
+              } else if (capturePendingRef.current) {
+                capturePendingRef.current = null;
+              }
             }
           }
 
@@ -340,6 +513,17 @@ export function DashboardCameraStage({
       cancelled = true;
       cancelAnimationFrame(rafId);
       approximateEmitRef.current = { ageYears: null, gender: null };
+      faceTrackerRef.current?.reset();
+      capturedFaceEmotionsRef.current.clear();
+      captureInFlightRef.current.clear();
+      capturePendingRef.current = null;
+      setCaptureNoticeFilename(null);
+      if (captureNoticeTimerRef.current) {
+        clearTimeout(captureNoticeTimerRef.current);
+        captureNoticeTimerRef.current = null;
+      }
+      lastFaceUserEmittedRef.current = null;
+      setCurrentFaceUser(null);
       setLiveEmotion(NEUTRAL_FALLBACK);
       setEmotionRows(EMOTION_ROWS_IDLE);
       setApproximateProfile(APPROXIMATE_PROFILE_IDLE);
@@ -359,6 +543,7 @@ export function DashboardCameraStage({
     setLiveEmotion,
     setEmotionRows,
     setApproximateProfile,
+    setCurrentFaceUser,
   ]);
 
   const handleSnapshot = useCallback(() => {
@@ -605,8 +790,18 @@ export function DashboardCameraStage({
                 >
                   {liveEmotion.confidence}%
                 </Text>
-                <Box className="dcs-sparkline-wrap">
-                  <DcsSparkline />
+                <Box className="dcs-capture-notice" aria-live="polite">
+                  {captureNoticeFilename ? (
+                    <Text
+                      size="xs"
+                      fw={600}
+                      c="violet.2"
+                      className="dcs-capture-notice__filename"
+                      title={captureNoticeFilename}
+                    >
+                      {captureNoticeFilename}
+                    </Text>
+                  ) : null}
                 </Box>
               </Group>
             </div>

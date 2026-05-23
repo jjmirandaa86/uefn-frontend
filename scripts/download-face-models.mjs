@@ -1,6 +1,6 @@
 /**
  * Descarga los pesos de face-api.js usados en el dashboard (tiny detector,
- * landmarks 68, expresiones, edad/género) a public/models.
+ * landmarks 68, expresiones, edad/género, reconocimiento) a public/models.
  *
  * Uso: node scripts/download-face-models.mjs
  */
@@ -24,6 +24,9 @@ const FILES = [
   "face_expression_model-shard1",
   "age_gender_model-weights_manifest.json",
   "age_gender_model-shard1",
+  "face_recognition_model-weights_manifest.json",
+  "face_recognition_model-shard1",
+  "face_recognition_model-shard2",
 ];
 
 async function download(url, dest) {

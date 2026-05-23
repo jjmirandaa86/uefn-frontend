@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { AppShell } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { DashboardLiveSessionProvider } from "./context/DashboardLiveSessionContext.jsx";
@@ -26,7 +20,6 @@ import { useCamera } from "./hooks/useCamera";
 import { useClock } from "./hooks/useClock";
 import { useEmotionHistoryRecorder } from "./hooks/useEmotionHistoryRecorder.js";
 import { formatSecondsAsClock } from "./utils/formatDetectedDuration.js";
-import { seedEmotionHistoryFromPublicJson } from "./utils/emotionHistoryStore.js";
 
 const SESSION_TIMER_INITIAL = { pauseMs: 0, pauseBeganAt: null };
 
@@ -67,6 +60,10 @@ function App() {
     { open: openHistoryModal, close: closeHistoryModal },
   ] = useDisclosure(false);
   const [
+    funMomentsModalOpened,
+    { open: openFunMomentsModal, close: closeFunMomentsModal },
+  ] = useDisclosure(false);
+  const [
     settingsModalOpened,
     { open: openSettingsModal, close: closeSettingsModal },
   ] = useDisclosure(false);
@@ -94,6 +91,7 @@ function App() {
   );
   /** Segundos de sesión mostrados (congelados en pausa; avanzan al reanudar). */
   const [detectedSessionSeconds, setDetectedSessionSeconds] = useState(0);
+  const [currentFaceUser, setCurrentFaceUser] = useState(null);
 
   const pauseSessionTimer = useCallback(() => {
     dispatchSessionTimer({ type: "pause" });
@@ -136,16 +134,19 @@ function App() {
     [detectedSessionSeconds],
   );
 
-  const emotionSessionHistory = useEmotionHistoryRecorder({
+  useEmotionHistoryRecorder({
     status,
     cameraSessionStartedAt,
     liveEmotion,
     sessionTimer,
+    currentFaceUser,
   });
 
   useEffect(() => {
-    void seedEmotionHistoryFromPublicJson();
-  }, []);
+    if (status !== "ready") {
+      setCurrentFaceUser(null);
+    }
+  }, [status]);
 
   const sessionLiveEmotion =
     status === "ready" ? liveEmotion : NEUTRAL_FALLBACK;
@@ -164,6 +165,7 @@ function App() {
       closeStatsModal();
       closeTodayModal();
       closeHistoryModal();
+      closeFunMomentsModal();
       closeSettingsModal();
       closeProfileModal();
       setActiveNav("inicio");
@@ -173,6 +175,7 @@ function App() {
       if (mobileOpened) closeMobile();
       closeTodayModal();
       closeHistoryModal();
+      closeFunMomentsModal();
       closeSettingsModal();
       closeProfileModal();
       openStatsModal();
@@ -183,6 +186,7 @@ function App() {
       if (mobileOpened) closeMobile();
       closeStatsModal();
       closeHistoryModal();
+      closeFunMomentsModal();
       closeSettingsModal();
       closeProfileModal();
       openTodayModal();
@@ -193,10 +197,22 @@ function App() {
       if (mobileOpened) closeMobile();
       closeStatsModal();
       closeTodayModal();
+      closeFunMomentsModal();
       closeSettingsModal();
       closeProfileModal();
       openHistoryModal();
       setActiveNav("historial");
+      return;
+    }
+    if (id === "momentos-divertidos") {
+      if (mobileOpened) closeMobile();
+      closeStatsModal();
+      closeTodayModal();
+      closeHistoryModal();
+      closeSettingsModal();
+      closeProfileModal();
+      openFunMomentsModal();
+      setActiveNav("momentos-divertidos");
       return;
     }
     if (id === "perfil") {
@@ -204,6 +220,7 @@ function App() {
       closeStatsModal();
       closeTodayModal();
       closeHistoryModal();
+      closeFunMomentsModal();
       closeSettingsModal();
       setProfileEditorKey((k) => k + 1);
       openProfileModal();
@@ -216,6 +233,7 @@ function App() {
       closeStatsModal();
       closeTodayModal();
       closeHistoryModal();
+      closeFunMomentsModal();
       closeSettingsModal();
       closeProfileModal();
       setActiveNav("game");
@@ -239,10 +257,16 @@ function App() {
     setActiveNav((prev) => (prev === "historial" ? "inicio" : prev));
   };
 
+  const handleFunMomentsModalClose = () => {
+    closeFunMomentsModal();
+    setActiveNav((prev) => (prev === "momentos-divertidos" ? "inicio" : prev));
+  };
+
   const openSettings = () => {
     closeStatsModal();
     closeTodayModal();
     closeHistoryModal();
+    closeFunMomentsModal();
     closeProfileModal();
     openSettingsModal();
   };
@@ -251,6 +275,7 @@ function App() {
     if (mobileOpened) closeMobile();
     closeStatsModal();
     closeHistoryModal();
+    closeFunMomentsModal();
     closeSettingsModal();
     closeProfileModal();
     openTodayModal();
@@ -300,7 +325,8 @@ function App() {
         detectedSessionDuration={detectedSessionDuration}
         pauseSessionTimer={pauseSessionTimer}
         resumeSessionTimer={resumeSessionTimer}
-        emotionSessionHistory={emotionSessionHistory}
+        currentFaceUser={currentFaceUser}
+        setCurrentFaceUser={setCurrentFaceUser}
       >
         <DashboardModals
           statsModalOpened={statsModalOpened}
@@ -309,6 +335,8 @@ function App() {
           onTodayModalClose={handleTodayModalClose}
           historyModalOpened={historyModalOpened}
           onHistoryModalClose={handleHistoryModalClose}
+          funMomentsModalOpened={funMomentsModalOpened}
+          onFunMomentsModalClose={handleFunMomentsModalClose}
           settingsModalOpened={settingsModalOpened}
           onSettingsModalClose={closeSettingsModal}
           profileModalOpened={profileModalOpened}

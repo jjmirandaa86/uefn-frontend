@@ -27,6 +27,49 @@
   );
 }
 
+/*
+  Phaser appends the DOM container first, then the game canvas. Without an
+  explicit stack order, the WebGL canvas often composites above the DOM layer
+  and hides DOMElement GIFs (Mario / Bowser).
+*/
+.game-canvas-host > canvas {
+  position: relative;
+  z-index: 0;
+}
+
+.game-canvas-host > div {
+  z-index: 1;
+}
+
+/* Cámara flotando sobre el canvas (esquina superior derecha). */
+.game-scene-hud-webcam-wrap {
+  position: absolute;
+  top: 35px;
+  right: 35px;
+  z-index: 50;
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+/* Pausa / continuar y reiniciar (esquina inferior derecha). */
+.game-scene-hud-actions {
+  position: absolute;
+  bottom: 35px;
+  right: 35px;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+/* Monedas + lectura facial (esquina superior izquierda). */
+.game-scene-hud-top-left {
+  position: absolute;
+  top: 35px;
+  left: 35px;
+  z-index: 50;
+  pointer-events: none;
+  align-items: flex-start;
+}
+
 .game-overlay {
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.2);

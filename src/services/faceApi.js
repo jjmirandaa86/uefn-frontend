@@ -58,8 +58,9 @@ export async function loadFaceLandmarkModels() {
 
 const tinyOpts = () =>
   new faceapi.TinyFaceDetectorOptions({
-    scoreThreshold: 0.45,
-    inputSize: 320,
+    scoreThreshold: 0.5,
+    // 416 mejora el recorte facial → descriptores más estables (un poco más lento).
+    inputSize: 416,
   });
 
 /**
@@ -81,6 +82,25 @@ export async function detectFaceLandmarksFromVideo(videoEl) {
 }
 
 let ageGenderLoadPromise = null;
+let recognitionLoadPromise = null;
+
+/** Carga faceRecognitionNet (descriptores para id estable por rostro). */
+export async function loadFaceRecognitionModel() {
+  if (recognitionLoadPromise) return recognitionLoadPromise;
+
+  recognitionLoadPromise = (async () => {
+    try {
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URL);
+      return { ok: true };
+    } catch (e) {
+      console.error("[faceApi] loadFaceRecognitionModel:", e);
+      recognitionLoadPromise = null;
+      return { ok: false, error: e };
+    }
+  })();
+
+  return recognitionLoadPromise;
+}
 
 /** Carga ageGenderNet (edad y género aproximados). */
 export async function loadAgeGenderModel() {
@@ -100,17 +120,18 @@ export async function loadAgeGenderModel() {
   return ageGenderLoadPromise;
 }
 
-/** Carga detector + landmarks + expresiones + edad/género (una pasada en el dashboard). */
+/** Carga detector + landmarks + expresiones + edad/género + reconocimiento (dashboard). */
 export async function loadDashboardFaceModels() {
-  const [a, b, c] = await Promise.all([
+  const [a, b, c, d] = await Promise.all([
     loadFaceLandmarkModels(),
     loadFaceApiModels(),
     loadAgeGenderModel(),
+    loadFaceRecognitionModel(),
   ]);
-  const ok = a.ok && b.ok && c.ok;
+  const ok = a.ok && b.ok && c.ok && d.ok;
   return {
     ok,
-    error: !a.ok ? a.error : !b.ok ? b.error : c.error,
+    error: !a.ok ? a.error : !b.ok ? b.error : !c.ok ? c.error : d.error,
   };
 }
 
@@ -130,6 +151,7 @@ export async function detectFacesLandmarksExpressionsFromVideo(videoEl) {
   return faceapi
     .detectAllFaces(videoEl, tinyOpts())
     .withFaceLandmarks()
+    .withFaceDescriptors()
     .withFaceExpressions()
     .withAgeAndGender();
 }

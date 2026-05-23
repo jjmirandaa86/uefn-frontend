@@ -33,8 +33,7 @@ export function landmarksToControls(detection, expressions, calib) {
   const yawRaw = (nose.x - centerX) / (faceW * 0.35);
   const yawNeutral = calib?.neutralYawRaw ?? 0;
   /** Invierte el giro respecto al video crudo para que coincida con “mirar a un lado” en selfie. */
-  const yaw =
-    -clamp(yawRaw - yawNeutral, -1, 1) * (calib?.yawGain ?? 1) * 1.15;
+  const yaw = -clamp(yawRaw - yawNeutral, -1, 1) * (calib?.yawGain ?? 1) * 1.15;
 
   const topLip = pos[62];
   const bottomLip = pos[66];

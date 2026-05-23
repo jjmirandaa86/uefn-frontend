@@ -15,23 +15,31 @@ const FACE_API_TO_USER = {
 
 /**
  * @param {import('face-api.js').FaceExpressions} expressions
- * @returns {{ key: string; label: string; emoji: string; color: string; confidence: number }}
+ * @returns {Record<string, number>}
  */
-export function mapFaceApiToEmotion(expressions) {
+export function computeEmotionScores(expressions) {
   const scores = {};
   for (const e of emotions) {
     scores[e.key] = 0;
   }
-
   for (const [apiLabel, userKey] of Object.entries(FACE_API_TO_USER)) {
     const v = expressions[apiLabel];
     if (typeof v === "number") {
       scores[userKey] += v;
     }
   }
+  return scores;
+}
+
+/**
+ * @param {import('face-api.js').FaceExpressions} expressions
+ * @returns {{ key: string; label: string; emoji: string; color: string; confidence: number }}
+ */
+export function mapFaceApiToEmotion(expressions) {
+  const scores = computeEmotionScores(expressions);
 
   const maxExpr = Math.max(...emotions.map((e) => scores[e.key]));
-  if (maxExpr < 0.02) {
+  if (maxExpr < 0.05) {
     return { ...EMOTION_BY_KEY.neutral, confidence: 0 };
   }
 
@@ -58,20 +66,10 @@ export function mapFaceApiToEmotion(expressions) {
  * @returns {Array<{ key: string; label: string; emoji: string; color: string; confidence: number }>}
  */
 export function mapFaceExpressionsToEmotionRows(expressions) {
-  const scores = {};
-  for (const e of emotions) {
-    scores[e.key] = 0;
-  }
-
-  for (const [apiLabel, userKey] of Object.entries(FACE_API_TO_USER)) {
-    const v = expressions[apiLabel];
-    if (typeof v === "number") {
-      scores[userKey] += v;
-    }
-  }
+  const scores = computeEmotionScores(expressions);
 
   const maxExpr = Math.max(...emotions.map((e) => scores[e.key]));
-  if (maxExpr < 0.02) {
+  if (maxExpr < 0.05) {
     return emotions.map((e) => ({ ...e, confidence: 0 }));
   }
 

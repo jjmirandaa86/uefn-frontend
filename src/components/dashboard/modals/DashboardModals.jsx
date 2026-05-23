@@ -1,4 +1,5 @@
 import { EmotionsTodayBody } from "./EmotionsTodayBody.jsx";
+import { FunMomentsBody } from "./FunMomentsBody.jsx";
 import { ProfileEditor } from "./ProfileEditor.jsx";
 import { QuickStatsBody } from "./QuickStatsBody.jsx";
 import { RecentHistoryBody } from "./RecentHistoryBody.jsx";
@@ -12,6 +13,8 @@ export function DashboardModals({
   onTodayModalClose,
   historyModalOpened,
   onHistoryModalClose,
+  funMomentsModalOpened,
+  onFunMomentsModalClose,
   settingsModalOpened,
   onSettingsModalClose,
   profileModalOpened,
@@ -29,16 +32,7 @@ export function DashboardModals({
         title="Datos Históricos"
         size="lg"
       >
-        <QuickStatsBody />
-      </AppModal>
-
-      <AppModal
-        opened={todayModalOpened}
-        onClose={onTodayModalClose}
-        title="Emociones de hoy"
-        size="lg"
-      >
-        <EmotionsTodayBody />
+        <QuickStatsBody active={statsModalOpened} />
       </AppModal>
 
       <AppModal
@@ -47,16 +41,43 @@ export function DashboardModals({
         title="Historial reciente"
         size="xl"
       >
-        <RecentHistoryBody />
+        <RecentHistoryBody active={historyModalOpened} />
+      </AppModal>
+
+      <AppModal
+        opened={todayModalOpened}
+        onClose={onTodayModalClose}
+        title="Emociones de hoy"
+        size="lg"
+      >
+        <EmotionsTodayBody active={todayModalOpened} />
+      </AppModal>
+
+      <AppModal
+        opened={funMomentsModalOpened}
+        onClose={onFunMomentsModalClose}
+        title="Momentos divertidos"
+        size="lg"
+        classNames={{
+          content: "stats-modal-content fun-moments-modal-content",
+          body: "stats-modal-body fun-moments-modal-shell",
+        }}
+      >
+        <FunMomentsBody active={funMomentsModalOpened} />
       </AppModal>
 
       <AppModal
         opened={settingsModalOpened}
         onClose={onSettingsModalClose}
         title="Configuracion"
-        size="md"
+        size="lg"
       >
-        <SettingsAboutBody onClose={onSettingsModalClose} />
+        {settingsModalOpened ? (
+          <SettingsAboutBody
+            key="settings-form"
+            onClose={onSettingsModalClose}
+          />
+        ) : null}
       </AppModal>
 
       <AppModal

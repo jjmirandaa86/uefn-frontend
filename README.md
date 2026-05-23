@@ -6,14 +6,14 @@ Documento pensado para lectura **académica y clara** (nivel aproximado de un jo
 
 ## 1. Qué es este proyecto
 
-| | |
-|--|--|
-| **Nombre comercial** | MoodVision AI |
-| **Tipo** | Aplicación web (SPA): un solo documento que React va actualizando sin recargar la página entera. |
-| **Objetivo** | Mostrar un **panel tipo dashboard** para reconocimiento emocional / estado de ánimo, con **cámara del navegador**, datos de ejemplo y ventanas (modales) de estadísticas, historial y perfil. |
-| **Idioma de la UI** | Español (textos de pantalla). |
+|                      |                                                                                                                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Nombre comercial** | MoodVision AI                                                                                                                                                                                 |
+| **Tipo**             | Aplicación web (SPA): un solo documento que React va actualizando sin recargar la página entera.                                                                                              |
+| **Objetivo**         | Mostrar un **panel tipo dashboard** para reconocimiento emocional / estado de ánimo, con **cámara del navegador**, datos de ejemplo y ventanas (modales) de estadísticas, historial y perfil. |
+| **Idioma de la UI**  | Español (textos de pantalla).                                                                                                                                                                 |
 
-La descripción técnica oficial del producto está resumida en `src/appMeta.js` (texto que también se muestra en configuración).
+Los parámetros de la app (URL del backend, límites de listados, umbrales de captura) están definidos en `src/config/appSettingsFields.js` y se pueden editar en el modal **Configuración** (rueda de ajustes), con valores por defecto desde `.env`.
 
 ---
 
@@ -42,11 +42,11 @@ flowchart LR
 
 Las siguientes imágenes son **referencias ilustrativas** del aspecto general (tema oscuro, violeta, layout). No sustituyen al 100 % lo que verás en el navegador, pero ayudan a entender **splash**, **dashboard** y un **modal de perfil**. Para un informe académico puedes sustituirlas por capturas reales: ejecuta `npm run dev`, abre la app y usa la herramienta de capturas del sistema.
 
-| Paso | Vista |
-|------|--------|
-| Arranque (splash ~3 s) | ![Pantalla de carga MoodVision](./docs/splash.png) |
-| Dashboard principal | ![Dashboard con menú, cámara y columnas](./docs/dashboard.png) |
-| Ejemplo de modal (Perfil) | ![Modal de perfil](./docs/modal-perfil.png) |
+| Paso                      | Vista                                                          |
+| ------------------------- | -------------------------------------------------------------- |
+| Arranque (splash ~3 s)    | ![Pantalla de carga MoodVision](./docs/splash.png)             |
+| Dashboard principal       | ![Dashboard con menú, cámara y columnas](./docs/dashboard.png) |
+| Ejemplo de modal (Perfil) | ![Modal de perfil](./docs/modal-perfil.png)                    |
 
 Archivos en el repo: `docs/splash.png`, `docs/dashboard.png`, `docs/modal-perfil.png`.
 
@@ -64,7 +64,8 @@ uefn-frontend/
 │   ├── AppRoot.jsx         # Proveedor Mantine + splash inicial
 │   ├── main.jsx            # Arranque de React
 │   ├── styles.css          # Estilos globales / “look” del dashboard
-│   ├── appMeta.js          # Versión, URL API, textos de configuración
+│   ├── config/
+│   │   └── appSettingsFields.js  # Catálogo de parámetros VITE_* (API, captura, listados)
 │   ├── components/         # Piezas de interfaz reutilizables
 │   ├── hooks/              # Lógica reutilizable (reloj, cámara)
 │   ├── data/               # Datos de demostración (emociones, avatares)
@@ -75,12 +76,12 @@ uefn-frontend/
 
 ### Herramientas principales (stack)
 
-| Herramienta | Rol (en pocas palabras) |
-|---------------|-------------------------|
-| **React** | Biblioteca para construir la interfaz con componentes. |
-| **Vite** | Empaqueta y sirve el proyecto muy rápido en desarrollo. |
-| **Mantine** | Componentes ya hechos (botones, modales, tipografía…). |
-| **Tabler Icons** | Iconos vectoriales del menú y cabecera. |
+| Herramienta                                   | Rol (en pocas palabras)                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **React**                                     | Biblioteca para construir la interfaz con componentes.                                     |
+| **Vite**                                      | Empaqueta y sirve el proyecto muy rápido en desarrollo.                                    |
+| **Mantine**                                   | Componentes ya hechos (botones, modales, tipografía…).                                     |
+| **Tabler Icons**                              | Iconos vectoriales del menú y cabecera.                                                    |
 | **HTTPS en dev** (`@vitejs/plugin-basic-ssl`) | Ayuda a probar la **cámara** en red local (los navegadores suelen exigir contexto seguro). |
 
 En `package.json` también aparecen **face-api.js** y **Recharts** como dependencias; el código actual del dashboard se apoya sobre todo en **datos de ejemplo** y en la cámara vía `useCamera`. Esas librerías pueden usarse en evoluciones futuras (por ejemplo modelos en `/public/models`).
@@ -116,11 +117,11 @@ flowchart LR
   L --- C --- R
 ```
 
-| Zona | Qué muestra | Notas |
-|------|----------------|-------|
+| Zona          | Qué muestra                                                                                               | Notas                                         |
+| ------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | **Izquierda** | Emoción “actual”, tiempo simulado, fila edad/género, barra de confianza, interruptores y acciones rápidas | Datos de demo (`src/data/emotions.js`, etc.). |
-| **Centro** | Vídeo de cámara + mensajes si no hay permiso o no es HTTPS | Botón “Activar cámara”. |
-| **Derecha** | Lista de confianza por emoción + bloque “Resumen” con cifras de ejemplo | Componente `DashboardRightColumn`. |
+| **Centro**    | Vídeo de cámara + mensajes si no hay permiso o no es HTTPS                                                | Botón “Activar cámara”.                       |
+| **Derecha**   | Lista de confianza por emoción + bloque “Resumen” con cifras de ejemplo                                   | Componente `DashboardRightColumn`.            |
 
 ---
 
@@ -137,22 +138,22 @@ flowchart TD
   PER["Perfil"] --> M4["Modal: nombre + avatares"]
 ```
 
-| Ícono (idea) | Entrada del menú | Efecto principal |
-|--------------|------------------|------------------|
-| Casa | **Inicio** | Cierra todo y deja solo el dashboard. |
-| Reloj | **Historial** | Lista de emociones recientes (demo). |
-| Gráfico | **Estadísticas** | Gráfico circular + lista de porcentajes (demo). |
-| Calendario | **Emociones de hoy** | Mini “gráfico de tendencia” del día (demo). |
-| Persona | **Perfil** | Editar nombre y avatar; **Guardar** actualiza cabecera. |
+| Ícono (idea) | Entrada del menú     | Efecto principal                                        |
+| ------------ | -------------------- | ------------------------------------------------------- |
+| Casa         | **Inicio**           | Cierra todo y deja solo el dashboard.                   |
+| Reloj        | **Historial**        | Lista de emociones recientes (demo).                    |
+| Gráfico      | **Estadísticas**     | Gráfico circular + lista de porcentajes (demo).         |
+| Calendario   | **Emociones de hoy** | Mini “gráfico de tendencia” del día (demo).             |
+| Persona      | **Perfil**           | Editar nombre y avatar; **Guardar** actualiza cabecera. |
 
 ---
 
 ## 6. Otros puntos de interacción
 
-| Elemento | Qué hace |
-|----------|-----------|
-| **Rueda de ajustes** (cabecera) | Abre el modal **Configuración** (URL API, tiempo de reconocimiento, toggles, descripción y versión desde `appMeta.js`). |
-| **Burgers** (menú) | En móvil abre/cierra el lateral; en escritorio colapsa/expande el navbar. |
+| Elemento                        | Qué hace                                                                                                                |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Rueda de ajustes** (cabecera) | Abre el modal **Configuración**: URL del backend, límites de historial/momentos divertidos y umbrales de captura automática (valores desde `.env`, editables y guardados en el navegador). |
+| **Burgers** (menú)              | En móvil abre/cierra el lateral; en escritorio colapsa/expande el navbar.                                               |
 
 ---
 
@@ -207,14 +208,13 @@ npm run dev
 
 Otros comandos útiles:
 
-| Comando | Para qué sirve |
-|---------|----------------|
-| `npm run build` | Genera la versión optimizada en `dist/`. |
-| `npm run preview` | Previsualiza el build localmente. |
-| `npm run lint` | Revisa el código con ESLint. |
-| `npm run split-avatars` | Regenera PNGs de avatares desde el script de sprites (avanzado). |
+| Comando                 | Para qué sirve                                                   |
+| ----------------------- | ---------------------------------------------------------------- |
+| `npm run build`         | Genera la versión optimizada en `dist/`.                         |
+| `npm run preview`       | Previsualiza el build localmente.                                |
+| `npm run lint`          | Revisa el código con ESLint.                                     |
 
-Variables opcionales (Vite): prefijo `VITE_` en `.env`, por ejemplo `VITE_API_URL`, `VITE_APP_VERSION` (ver `src/appMeta.js`).
+Variables opcionales (Vite): copia `.env.example` a `.env` (prefijo `VITE_`). Lista completa y descripciones en `src/config/appSettingsFields.js`; varias también se cambian desde el modal **Configuración** sin reiniciar el servidor (se persisten en `localStorage` vía `src/utils/appSettingsStore.js`).
 
 ---
 

@@ -1,82 +1,67 @@
-import { useEffect, useRef, useState } from "react";
-import { appendEmotionHistoryRecord } from "../utils/emotionHistoryStore.js";
+import { useEffect, useRef } from "react";
+import { postEmotionHistoryEntry } from "../services/emotionHistoryApi.js";
 
-/** Nombre del evento global al guardar un tick (1/s) de emoción. `detail`: `{ entry, sessionStartedAt }`. */
+/** Dispara al guardar un tick en el backend. */
 export const EMOTION_HISTORY_STORED_EVENT = "emotion-history-stored";
 
-const MAX_SNAPSHOTS = 7200;
-
-function formatClockHm() {
-  const d = new Date();
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
+function isStableFaceUser(faceUser) {
+  return (
+    typeof faceUser === "string" &&
+    faceUser.length > 0 &&
+    !faceUser.startsWith("face-pending") &&
+    faceUser !== "face-unknown"
+  );
 }
 
 /**
- * Cada segundo con cámara `ready` guarda `{ time, label, emoji, color, seq }`
- * y dispara `EMOTION_HISTORY_STORED_EVENT` en `window`. Respeta pausa (`sessionTimer.pauseBeganAt`).
- * Persiste cada tick en localStorage (misma forma que `public/data/emotionHistory.json`).
+ * Cada segundo con cámara `ready` envía emoción a `emotion_recent_history` (MySQL).
+ * Respeta pausa (`sessionTimer.pauseBeganAt`).
  */
 export function useEmotionHistoryRecorder({
   status,
   cameraSessionStartedAt,
   liveEmotion,
   sessionTimer,
+  currentFaceUser,
 }) {
-  const [emotionSessionHistory, setEmotionSessionHistory] = useState([]);
   const liveRef = useRef(liveEmotion);
   const sessionTimerRef = useRef(sessionTimer);
-  const seqRef = useRef(0);
+  const faceUserRef = useRef(currentFaceUser);
 
   useEffect(() => {
     liveRef.current = liveEmotion;
     sessionTimerRef.current = sessionTimer;
-  }, [liveEmotion, sessionTimer]);
+    faceUserRef.current = currentFaceUser;
+  }, [liveEmotion, sessionTimer, currentFaceUser]);
 
   useEffect(() => {
     if (status !== "ready" || cameraSessionStartedAt == null) {
-      seqRef.current = 0;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- vaciar histórico al cortar cámara
-      setEmotionSessionHistory([]);
-      return;
+      return undefined;
     }
 
-    seqRef.current = 0;
-    setEmotionSessionHistory([]);
-
-    const tick = () => {
+    const tick = async () => {
       if (sessionTimerRef.current.pauseBeganAt != null) return;
 
       const e = liveRef.current;
-      const seq = seqRef.current;
-      seqRef.current += 1;
-      const entry = {
-        seq,
-        time: formatClockHm(),
-        label: e.label,
-        emoji: e.emoji,
-        color: e.color,
-      };
+      const faceUser = faceUserRef.current;
+      if (!isStableFaceUser(faceUser) || e.confidence <= 0) return;
 
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent(EMOTION_HISTORY_STORED_EVENT, {
-            detail: { entry, sessionStartedAt: cameraSessionStartedAt },
-          }),
-        );
-        appendEmotionHistoryRecord(cameraSessionStartedAt, entry);
+      try {
+        await postEmotionHistoryEntry({
+          emocion: e.label,
+          nivelConfianza: e.confidence,
+          faceUser,
+        });
+        window.dispatchEvent(new CustomEvent(EMOTION_HISTORY_STORED_EVENT));
+      } catch (err) {
+        console.warn("[emotion-history]", err);
       }
-
-      setEmotionSessionHistory((prev) =>
-        [entry, ...prev].slice(0, MAX_SNAPSHOTS),
-      );
     };
 
-    tick();
-    const id = window.setInterval(tick, 1000);
+    void tick();
+    const id = window.setInterval(() => {
+      void tick();
+    }, 1000);
     return () => window.clearInterval(id);
   }, [status, cameraSessionStartedAt]);
-
-  return emotionSessionHistory;
 }

@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import coinSvgUrl from "../assets/coin.svg?url";
+import flagPngUrl from "../assets/flag.png?url";
 import monsterSvgUrl from "../assets/monster.svg?url";
 import playerGifUrl from "../assets/mario-running.gif?url";
 import bossGifUrl from "../assets/bowser-rebolando.gif?url";
@@ -10,6 +11,7 @@ import {
   coinAbovePlatformTier,
   enemyOnFloorCenterY,
   floatingPlatformCenterY,
+  floorSurfaceTopY,
   playerOnFloorCenterY,
 } from "../config.js";
 import { addParallaxEnvironment } from "./environmentLayers.js";
@@ -50,12 +52,18 @@ export class MainGameScene extends Phaser.Scene {
 
   preload() {
     this.load.image("tex_coin", coinSvgUrl);
+    this.load.image("tex_flag", flagPngUrl);
     this.load.image("tex_enemy", monsterSvgUrl);
     /** Cuerpo físico invisible; el GIF animado va en capa DOM (`this.playerDom`). */
     makeTexture(this, "tex_player", SPRITES.playerW, SPRITES.playerH, 0x0f172a);
     makeTexture(this, "tex_ground", 120, 24, 0x334155);
-    makeTexture(this, "tex_flag", SPRITES.flagW, SPRITES.flagH, 0xa855f7);
-    makeTexture(this, "tex_fire", SPRITES.fireDisplay, SPRITES.fireDisplay, 0xf43f5e);
+    makeTexture(
+      this,
+      "tex_fire",
+      SPRITES.fireDisplay,
+      SPRITES.fireDisplay,
+      0xf43f5e,
+    );
     /** Cuerpo físico invisible; Bowser en DOM (`this.bossDom`). */
     makeTexture(
       this,
@@ -133,9 +141,12 @@ export class MainGameScene extends Phaser.Scene {
 
     this.flag = this.physics.add.sprite(
       WORLD.width - 200,
-      WORLD.walkY - 80,
+      floorSurfaceTopY(),
       "tex_flag",
     );
+    this.flag.setOrigin(0.5, 1);
+    this.flag.setDisplaySize(SPRITES.flagW, SPRITES.flagH);
+    this.flag.refreshBody();
     this.flag.setDepth(28);
     this.flag.body.setAllowGravity(false);
     this.flag.body.moves = false;
@@ -176,7 +187,10 @@ export class MainGameScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.player, this.enemies, (p, enemy) => {
       if (!enemy.active) return;
-      if (p.body.velocity.y > 55 && p.body.bottom <= enemy.body.top + SPRITES.stompEnemyMargin) {
+      if (
+        p.body.velocity.y > 55 &&
+        p.body.bottom <= enemy.body.top + SPRITES.stompEnemyMargin
+      ) {
         enemy.disableBody(true, true);
         this.score += 250;
         p.setVelocityY(-380);
@@ -239,14 +253,14 @@ export class MainGameScene extends Phaser.Scene {
     this._emitHud();
   }
 
-  /** Suelo con huecos + plataformas flotantes (rectángulos estáticos). */
+  /** Suelo caminable (invisible) + plataformas flotantes visibles. */
   _buildWorld() {
     const top = WORLD.walkY - 12;
     for (let x = 60; x < WORLD.width - 80; x += 120) {
       if (this._isGap(x)) continue;
       const p = this.platforms.create(x, top, "tex_ground");
       p.refreshBody();
-      p.setDepth(8);
+      p.setVisible(false);
     }
 
     /** [centroX, tier, ancho, alto] — el Y sale de `WORLD.floatPlatform*` + `floorSurfaceTopY()`. */
@@ -399,7 +413,8 @@ export class MainGameScene extends Phaser.Scene {
       c.eyeShoot >= eyeThr && c.mouthOpen < 0.16 && c.smile < 0.45;
     if (shootIntent && this.shootCooldown <= 0) {
       const ball = this.projectiles.create(
-        this.player.x + (this.player.flipX ? -SPRITES.shootSpawnX : SPRITES.shootSpawnX),
+        this.player.x +
+          (this.player.flipX ? -SPRITES.shootSpawnX : SPRITES.shootSpawnX),
         this.player.y - SPRITES.shootSpawnY,
         "tex_fire",
       );

@@ -3,6 +3,8 @@ import {
   Badge,
   Box,
   Button,
+  Card,
+  Center,
   Divider,
   Flex,
   Group,
@@ -16,7 +18,9 @@ import {
   Tooltip,
 } from "@mantine/core";
 import {
+  IconArrowLeft,
   IconCamera,
+  IconClock,
   IconCoinFilled,
   IconCrown,
   IconFaceId,
@@ -27,19 +31,24 @@ import {
   IconRefresh,
   IconSparkles,
   IconTarget,
+  IconTrophy,
+  IconX,
 } from "@tabler/icons-react";
 import charactersArtSvgUrl from "../assets/Super-Mario-PNG-Photos.png?url";
 import designSnesControlPng from "../assets/design-snes-control.png?url";
 import gameOverTitlePng from "../assets/Game-Over.png?url";
+import marioBrosWinPng from "../assets/mario-bros-win.png?url";
 
 /**
  * @param {"sm" | "lg"} [size] — `lg` en calibración para ver gestos y landmarks con claridad.
+ * @param {boolean} [showCameraActiveLegend] — Muestra punto verde + «Cámara activa» bajo el preview.
  */
 export function WebcamOverlay({
   videoRef,
   canvasRef,
   size = "sm",
   cornerBrackets = false,
+  showCameraActiveLegend = true,
 }) {
   const large = size === "lg";
   const videoW = large ? 640 : 180;
@@ -48,8 +57,9 @@ export function WebcamOverlay({
   const canvasH = large ? 480 : 270;
 
   return (
-    <Box
-      pos="relative"
+    <Stack
+      gap={6}
+      align="center"
       w={
         large
           ? { base: "100%", sm: "min(100%, 560px)" }
@@ -57,84 +67,124 @@ export function WebcamOverlay({
       }
       maw={large ? 640 : undefined}
       mx={large ? "auto" : undefined}
-      style={{
-        flexShrink: 0,
-        borderRadius: large ? 16 : 12,
-        overflow: "hidden",
-        border: large ? "1px solid rgba(167, 139, 250, 0.35)" : undefined,
-        boxShadow: large
-          ? "0 0 0 1px rgba(139, 92, 246, 0.15), 0 16px 40px rgba(0, 0, 0, 0.35)"
-          : undefined,
-      }}
+      style={{ flexShrink: 0 }}
     >
-      <video
-        ref={videoRef}
-        muted
-        playsInline
-        autoPlay
-        width={videoW}
-        height={videoH}
+      <Box
+        pos="relative"
+        w="100%"
         style={{
-          display: "block",
-          width: "100%",
-          height: "auto",
-          transform: "scaleX(-1)",
-          background: "#020617",
+          flexShrink: 0,
+          borderRadius: large ? 16 : 12,
+          overflow: "hidden",
+          border: large
+            ? "1px solid rgba(167, 139, 250, 0.35)"
+            : "1px solid rgba(99, 102, 241, 0.28)",
+          boxShadow: large
+            ? "0 0 0 1px rgba(139, 92, 246, 0.15), 0 16px 40px rgba(0, 0, 0, 0.35)"
+            : "0 0 12px rgba(0, 0, 0, 0.35)",
         }}
-      />
-      <canvas
-        ref={canvasRef}
-        width={canvasW}
-        height={canvasH}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          pointerEvents: "none",
-        }}
-      />
-      {cornerBrackets && large ? (
-        <Box
-          aria-hidden
-          pos="absolute"
-          inset={0}
-          style={{ zIndex: 3, pointerEvents: "none" }}
-        >
-          {[
-            { t: 14, l: 14, bt: 3, bl: 3, br: 0, bb: 0, rTL: 2 },
-            { t: 14, r: 14, bt: 3, br: 3, bl: 0, bb: 0, rTR: 2 },
-            { b: 14, l: 14, bb: 3, bl: 3, br: 0, bt: 0, rBL: 2 },
-            { b: 14, r: 14, bb: 3, br: 3, bl: 0, bt: 0, rBR: 2 },
-          ].map((c, i) => (
-            <Box
-              key={i}
-              pos="absolute"
-              w={28}
-              h={28}
-              style={{
-                top: c.t,
-                left: c.l,
-                right: c.r,
-                bottom: c.b,
-                borderTopWidth: c.bt,
-                borderBottomWidth: c.bb,
-                borderLeftWidth: c.bl,
-                borderRightWidth: c.br,
-                borderStyle: "solid",
-                borderColor: "rgba(196, 181, 253, 0.95)",
-                borderTopLeftRadius: c.rTL,
-                borderTopRightRadius: c.rTR,
-                borderBottomLeftRadius: c.rBL,
-                borderBottomRightRadius: c.rBR,
-              }}
-            />
-          ))}
-        </Box>
+      >
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          autoPlay
+          width={videoW}
+          height={videoH}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "auto",
+            transform: "scaleX(-1)",
+            background: "#020617",
+          }}
+        />
+        <canvas
+          ref={canvasRef}
+          width={canvasW}
+          height={canvasH}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+          }}
+        />
+        {cornerBrackets && large ? (
+          <Box
+            aria-hidden
+            pos="absolute"
+            inset={0}
+            style={{ zIndex: 3, pointerEvents: "none" }}
+          >
+            {[
+              { t: 14, l: 14, bt: 3, bl: 3, br: 0, bb: 0, rTL: 2 },
+              { t: 14, r: 14, bt: 3, br: 3, bl: 0, bb: 0, rTR: 2 },
+              { b: 14, l: 14, bb: 3, bl: 3, br: 0, bt: 0, rBL: 2 },
+              { b: 14, r: 14, bb: 3, br: 3, bl: 0, bt: 0, rBR: 2 },
+            ].map((c, i) => (
+              <Box
+                key={i}
+                pos="absolute"
+                w={28}
+                h={28}
+                style={{
+                  top: c.t,
+                  left: c.l,
+                  right: c.r,
+                  bottom: c.b,
+                  borderTopWidth: c.bt,
+                  borderBottomWidth: c.bb,
+                  borderLeftWidth: c.bl,
+                  borderRightWidth: c.br,
+                  borderStyle: "solid",
+                  borderColor: "rgba(196, 181, 253, 0.95)",
+                  borderTopLeftRadius: c.rTL,
+                  borderTopRightRadius: c.rTR,
+                  borderBottomLeftRadius: c.rBL,
+                  borderBottomRightRadius: c.rBR,
+                }}
+              />
+            ))}
+          </Box>
+        ) : null}
+      </Box>
+      {showCameraActiveLegend ? (
+        <Group gap={6} wrap="nowrap" justify="center" w="100%">
+          <Box
+            w={8}
+            h={8}
+            bg="#22c55e"
+            style={{
+              borderRadius: 9999,
+              boxShadow: "0 0 10px rgba(34, 197, 94, 0.75)",
+              flexShrink: 0,
+            }}
+            aria-hidden
+          />
+          <Text size="xs" c="gray.3" fw={600} lh={1.2}>
+            Cámara activa
+          </Text>
+        </Group>
       ) : null}
-    </Box>
+    </Stack>
   );
 }
+
+const hudHeaderActionButtonProps = {
+  variant: "light",
+  color: "violet",
+  size: "xs",
+  radius: "md",
+  fw: 700,
+  styles: {
+    root: {
+      border: "1px solid rgba(167, 139, 250, 0.35)",
+      boxShadow: "0 4px 14px rgba(91, 33, 182, 0.28)",
+    },
+  },
+};
 
 export function GameHUD({
   hud,
@@ -143,6 +193,8 @@ export function GameHUD({
   onPauseToggle,
   gamePaused = false,
   variant = "default",
+  hideStatsBar = false,
+  hideFacialLabel = false,
 }) {
   if (variant === "bar") {
     const violet = "var(--mantine-color-violet-4)";
@@ -222,143 +274,146 @@ export function GameHUD({
         }}
       >
         <Stack gap="sm">
-          <Group
-            justify="space-between"
-            align="flex-start"
-            wrap="nowrap"
-            gap="md"
-          >
-            <Text
-              size="xs"
-              fw={800}
-              c="gray.4"
-              tt="uppercase"
-              style={{ letterSpacing: "0.14em" }}
-            >
-              HUD
-            </Text>
-            {onRestart || onPauseToggle ? (
-              <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
-                {onPauseToggle ? (
-                  <Button
-                    type="button"
-                    variant="light"
-                    color="gray"
-                    size="xs"
-                    radius="md"
-                    fw={700}
-                    leftSection={
-                      gamePaused ? (
-                        <IconPlayerPlay size={14} stroke={1.5} />
-                      ) : (
-                        <IconPlayerPause size={14} stroke={1.5} />
-                      )
-                    }
-                    onClick={onPauseToggle}
-                    title={gamePaused ? "Continuar partida" : "Pausar partida"}
-                  >
-                    {gamePaused ? "Continuar" : "Pausa"}
-                  </Button>
-                ) : null}
-                {onRestart ? (
-                  <Button
-                    type="button"
-                    variant="light"
-                    color="violet"
-                    size="xs"
-                    radius="md"
-                    fw={700}
-                    onClick={onRestart}
-                    title="Volver a calibrar y empezar de cero"
-                  >
-                    Reiniciar
-                  </Button>
-                ) : null}
-              </Group>
-            ) : null}
-          </Group>
-
-          <Box
-            py={{ base: 6, sm: 10 }}
-            px={{ base: 4, sm: 8 }}
-            style={{
-              borderRadius: 18,
-              background:
-                "linear-gradient(90deg, rgba(15, 23, 42, 0.92) 0%, rgba(11, 14, 41, 0.96) 50%, rgba(15, 23, 42, 0.92) 100%)",
-              border: "1px solid rgba(167, 139, 250, 0.28)",
-              boxShadow:
-                "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 24px rgba(124, 58, 237, 0.12)",
-            }}
-          >
-            <Group wrap="nowrap" align="stretch" gap={0} grow>
-              {stat(
-                IconTarget,
-                violet,
-                "drop-shadow(0 0 12px rgba(167, 139, 250, 0.75))",
-                "Puntos",
-                hud.score,
-                "Tu puntuación total. Sube al coger monedas (+100), al eliminar enemigos saltando encima (+250), al acertar disparos a enemigos (+180) y al golpear al enemigo final (+150).",
-              )}
-              <Divider {...dividerProps} />
-              {stat(
-                IconCoinFilled,
-                "#fbbf24",
-                "drop-shadow(0 0 10px rgba(251, 191, 36, 0.55))",
-                "Monedas",
-                hud.coins,
-                "Cuántas monedas has recogido en este intento. Cada moneda suma puntos y cuenta aquí.",
-              )}
-              <Divider {...dividerProps} />
-              {stat(
-                IconHeartFilled,
-                "#f87171",
-                "drop-shadow(0 0 10px rgba(248, 113, 113, 0.55))",
-                "Vidas",
-                hud.lives,
-                "Intentos que te quedan. Pierdes una si caes al vacío, te toca un enemigo o el enemigo final del nivel te golpea.",
-              )}
-              <Divider {...dividerProps} />
-              {stat(
-                IconCrown,
-                "#c4b5fd",
-                "drop-shadow(0 0 12px rgba(196, 181, 253, 0.65))",
-                "Jefe",
-                hud.bossHp,
-                "Vida del enemigo fuerte al final del recorrido (el grande rojo). Disminúyela disparándole: entrecierra los ojos y mantén la boca casi cerrada. Cuando llegue a 0, lo eliminas.",
-              )}
-            </Group>
-          </Box>
-
-          <Divider color="rgba(148, 163, 184, 0.15)" />
-          <Tooltip
-            label="Lo que la cámara está leyendo ahora: por ejemplo mirar a los lados para moverte, boca para saltar, sonrisa para sprint y ojos entrecerrados para disparar (según la calibración)."
-            position="top"
-            withArrow
-            multiline
-            maw={300}
-            openDelay={200}
-            closeDelay={80}
-            events={{ hover: true, focus: true, touch: true }}
-          >
+          {!hideStatsBar || onRestart || onPauseToggle ? (
             <Group
-              gap="sm"
+              justify={hideStatsBar ? "flex-end" : "space-between"}
+              align="flex-start"
               wrap="nowrap"
-              align="center"
-              style={{ cursor: "help", borderRadius: 8 }}
+              gap="md"
             >
-              <ThemeIcon size="sm" radius="sm" variant="light" color="violet">
-                <IconFaceId size={16} stroke={1.5} />
-              </ThemeIcon>
-              <Text size="sm" c="gray.2" lh={1.4}>
-                <Text span c="gray.4" fw={600}>
-                  Rostro:{" "}
+              {!hideStatsBar ? (
+                <Text
+                  size="xs"
+                  fw={800}
+                  c="gray.4"
+                  tt="uppercase"
+                  style={{ letterSpacing: "0.14em" }}
+                >
+                  HUD
                 </Text>
-                <Text span c="gray.0" fw={700}>
-                  {facialLabel}
-                </Text>
-              </Text>
+              ) : null}
+              {onRestart || onPauseToggle ? (
+                <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+                  {onPauseToggle ? (
+                    <Button
+                      type="button"
+                      {...hudHeaderActionButtonProps}
+                      leftSection={
+                        gamePaused ? (
+                          <IconPlayerPlay size={14} stroke={1.5} />
+                        ) : (
+                          <IconPlayerPause size={14} stroke={1.5} />
+                        )
+                      }
+                      onClick={onPauseToggle}
+                      title={
+                        gamePaused ? "Continuar partida" : "Pausar partida"
+                      }
+                    >
+                      {gamePaused ? "Continuar" : "Pausa"}
+                    </Button>
+                  ) : null}
+                  {onRestart ? (
+                    <Button
+                      type="button"
+                      {...hudHeaderActionButtonProps}
+                      leftSection={<IconRefresh size={14} stroke={1.5} />}
+                      onClick={onRestart}
+                      title="Volver a calibrar y empezar de cero"
+                    >
+                      Reiniciar
+                    </Button>
+                  ) : null}
+                </Group>
+              ) : null}
             </Group>
-          </Tooltip>
+          ) : null}
+
+          {!hideStatsBar ? (
+            <Box
+              py={{ base: 6, sm: 10 }}
+              px={{ base: 4, sm: 8 }}
+              style={{
+                borderRadius: 18,
+                background:
+                  "linear-gradient(90deg, rgba(15, 23, 42, 0.92) 0%, rgba(11, 14, 41, 0.96) 50%, rgba(15, 23, 42, 0.92) 100%)",
+                border: "1px solid rgba(167, 139, 250, 0.28)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 24px rgba(124, 58, 237, 0.12)",
+              }}
+            >
+              <Group wrap="nowrap" align="stretch" gap={0} grow>
+                {stat(
+                  IconTarget,
+                  violet,
+                  "drop-shadow(0 0 12px rgba(167, 139, 250, 0.75))",
+                  "Puntos",
+                  hud.score,
+                  "Tu puntuación total. Sube al coger monedas (+100), al eliminar enemigos saltando encima (+250), al acertar disparos a enemigos (+180) y al golpear al enemigo final (+150).",
+                )}
+                <Divider {...dividerProps} />
+                {stat(
+                  IconCoinFilled,
+                  "#fbbf24",
+                  "drop-shadow(0 0 10px rgba(251, 191, 36, 0.55))",
+                  "Monedas",
+                  hud.coins,
+                  "Cuántas monedas has recogido en este intento. Cada moneda suma puntos y cuenta aquí.",
+                )}
+                <Divider {...dividerProps} />
+                {stat(
+                  IconHeartFilled,
+                  "#f87171",
+                  "drop-shadow(0 0 10px rgba(248, 113, 113, 0.55))",
+                  "Vidas",
+                  hud.lives,
+                  "Intentos que te quedan. Pierdes una si caes al vacío, te toca un enemigo o el enemigo final del nivel te golpea.",
+                )}
+                <Divider {...dividerProps} />
+                {stat(
+                  IconCrown,
+                  "#c4b5fd",
+                  "drop-shadow(0 0 12px rgba(196, 181, 253, 0.65))",
+                  "Jefe",
+                  hud.bossHp,
+                  "Vida del enemigo fuerte al final del recorrido (el grande rojo). Disminúyela disparándole: entrecierra los ojos y mantén la boca casi cerrada. Cuando llegue a 0, lo eliminas.",
+                )}
+              </Group>
+            </Box>
+          ) : null}
+
+          {!hideStatsBar ? <Divider color="rgba(148, 163, 184, 0.15)" /> : null}
+          {!hideFacialLabel ? (
+            <Tooltip
+              label="Lo que la cámara está leyendo ahora: por ejemplo mirar a los lados para moverte, boca para saltar, sonrisa para sprint y ojos entrecerrados para disparar (según la calibración)."
+              position="top"
+              withArrow
+              multiline
+              maw={300}
+              openDelay={200}
+              closeDelay={80}
+              events={{ hover: true, focus: true, touch: true }}
+            >
+              <Group
+                gap="sm"
+                wrap="nowrap"
+                align="center"
+                style={{ cursor: "help", borderRadius: 8 }}
+              >
+                <ThemeIcon size="sm" radius="sm" variant="light" color="violet">
+                  <IconFaceId size={16} stroke={1.5} />
+                </ThemeIcon>
+                <Text size="sm" c="gray.2" lh={1.4}>
+                  <Text span c="gray.4" fw={600}>
+                    Rostro:{" "}
+                  </Text>
+                  <Text span c="gray.0" fw={700}>
+                    {facialLabel}
+                  </Text>
+                </Text>
+              </Group>
+            </Tooltip>
+          ) : null}
         </Stack>
       </Paper>
     );
@@ -375,11 +430,7 @@ export function GameHUD({
             {onPauseToggle ? (
               <Button
                 type="button"
-                variant="light"
-                color="gray"
-                size="xs"
-                radius="md"
-                fw={700}
+                {...hudHeaderActionButtonProps}
                 leftSection={
                   gamePaused ? (
                     <IconPlayerPlay size={14} stroke={1.5} />
@@ -396,11 +447,8 @@ export function GameHUD({
             {onRestart ? (
               <Button
                 type="button"
-                variant="light"
-                color="violet"
-                size="xs"
-                radius="md"
-                fw={700}
+                {...hudHeaderActionButtonProps}
+                leftSection={<IconRefresh size={14} stroke={1.5} />}
                 onClick={onRestart}
                 title="Volver a calibrar y empezar de cero"
               >
@@ -732,6 +780,21 @@ const CALIB_STEPS = [
   },
 ];
 
+/** Mismo aspecto para Cancelar, Volver y Capturar en calibración. */
+const CALIB_ACTION_BUTTON = {
+  variant: "gradient",
+  gradient: { from: "violet.6", to: "grape.8", deg: 125 },
+  size: "md",
+  radius: "md",
+  fw: 800,
+  styles: {
+    root: {
+      boxShadow: "0 8px 22px rgba(91, 33, 182, 0.45)",
+      border: "1px solid rgba(196, 181, 253, 0.35)",
+    },
+  },
+};
+
 /** Dos capturas: boca cerrada (neutro) y boca un poco abierta. Paso 0 guarda también apertura de ojos. */
 export function CalibrationScreen({
   sampleRef,
@@ -948,20 +1011,10 @@ export function CalibrationScreen({
               <Box visibleFrom="md" w="100%" mt="auto">
                 <Button
                   type="button"
-                  variant="default"
-                  color="gray"
-                  size="md"
-                  radius="md"
+                  {...CALIB_ACTION_BUTTON}
                   fullWidth
+                  leftSection={<IconX size={18} stroke={1.6} />}
                   onClick={onCancel}
-                  styles={{
-                    root: {
-                      background: "rgba(15, 23, 42, 0.75)",
-                      borderColor: "rgba(148, 163, 184, 0.45)",
-                      color: "#e2e8f0",
-                      fontWeight: 700,
-                    },
-                  }}
                 >
                   Cancelar
                 </Button>
@@ -977,30 +1030,9 @@ export function CalibrationScreen({
               order={{ base: 1, md: 2 }}
               justify="flex-start"
             >
-              <Group
-                justify="space-between"
-                align="center"
-                wrap="wrap"
-                gap="xs"
-              >
-                <Text fw={800} size="sm" c="gray.0">
-                  Tu cámara
-                </Text>
-                <Group gap={8} wrap="nowrap" align="center">
-                  <Box
-                    w={8}
-                    h={8}
-                    bg="green.5"
-                    style={{
-                      borderRadius: 9999,
-                      boxShadow: "0 0 10px rgba(34, 197, 94, 0.65)",
-                    }}
-                  />
-                  <Text size="sm" c="green.4" fw={700}>
-                    Cámara lista
-                  </Text>
-                </Group>
-              </Group>
+              <Text fw={800} size="sm" c="gray.0">
+                Tu cámara
+              </Text>
 
               <Box
                 style={{
@@ -1039,12 +1071,9 @@ export function CalibrationScreen({
               {step === 1 ? (
                 <Button
                   type="button"
-                  variant="light"
-                  color="violet"
-                  size="md"
-                  radius="md"
+                  {...CALIB_ACTION_BUTTON}
                   fullWidth
-                  fw={700}
+                  leftSection={<IconArrowLeft size={18} stroke={1.6} />}
                   onClick={goBackStep}
                 >
                   ← Volver al paso 1
@@ -1054,19 +1083,10 @@ export function CalibrationScreen({
               <Box visibleFrom="md" w="100%">
                 <Button
                   type="button"
-                  variant="gradient"
-                  gradient={{ from: "violet.6", to: "grape.8", deg: 125 }}
-                  size="md"
-                  radius="md"
+                  {...CALIB_ACTION_BUTTON}
                   fullWidth
-                  fw={800}
                   onClick={capture}
                   leftSection={<IconCamera size={18} stroke={1.5} />}
-                  styles={{
-                    root: {
-                      boxShadow: "0 8px 22px rgba(91, 33, 182, 0.45)",
-                    },
-                  }}
                 >
                   Capturar
                 </Button>
@@ -1078,40 +1098,21 @@ export function CalibrationScreen({
             <Group gap="sm" grow wrap="nowrap" align="stretch">
               <Button
                 type="button"
-                variant="default"
-                color="gray"
-                size="md"
-                radius="md"
+                {...CALIB_ACTION_BUTTON}
                 miw={0}
                 style={{ flex: 1 }}
+                leftSection={<IconX size={18} stroke={1.6} />}
                 onClick={onCancel}
-                styles={{
-                  root: {
-                    background: "rgba(15, 23, 42, 0.75)",
-                    borderColor: "rgba(148, 163, 184, 0.45)",
-                    color: "#e2e8f0",
-                    fontWeight: 700,
-                  },
-                }}
               >
                 Cancelar
               </Button>
               <Button
                 type="button"
-                variant="gradient"
-                gradient={{ from: "violet.6", to: "grape.8", deg: 125 }}
-                size="md"
-                radius="md"
+                {...CALIB_ACTION_BUTTON}
                 miw={0}
-                style={{ flex: 1.35 }}
-                fw={800}
+                style={{ flex: 1 }}
                 onClick={capture}
                 leftSection={<IconCamera size={18} stroke={1.5} />}
-                styles={{
-                  root: {
-                    boxShadow: "0 8px 22px rgba(91, 33, 182, 0.45)",
-                  },
-                }}
               >
                 Capturar
               </Button>
@@ -1123,7 +1124,43 @@ export function CalibrationScreen({
   );
 }
 
-export function GameOverOverlay({ onRetry }) {
+function GameOverSummaryStat({ label, value, icon }) {
+  return (
+    <Group
+      wrap="nowrap"
+      align="center"
+      gap="sm"
+      style={{ flex: "1 1 0", minWidth: 0 }}
+    >
+      <Box
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 10,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(42, 36, 31, 0.92)",
+          border: "1px solid rgba(120, 100, 80, 0.4)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+        }}
+      >
+        {icon}
+      </Box>
+      <Stack gap={2} align="flex-start" miw={0} style={{ flex: 1 }}>
+        <Text size="xs" c="gray.5" tt="uppercase" fw={600} lh={1.25}>
+          {label}
+        </Text>
+        <Text fz="xl" fw={900} c="gray.0" lh={1.1}>
+          {value}
+        </Text>
+      </Stack>
+    </Group>
+  );
+}
+
+export function GameOverOverlay({ onRetry, runTimeLabel, score }) {
   return (
     <Box
       component="section"
@@ -1173,6 +1210,33 @@ export function GameOverOverlay({ onRetry }) {
             }
             labelPosition="center"
           />
+
+          <Flex
+            direction={{ base: "column", sm: "row" }}
+            gap={{ base: "md", sm: "xl" }}
+            align="stretch"
+            justify="center"
+            w="100%"
+            maw={480}
+          >
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <GameOverSummaryStat
+                label="Puntos logrados"
+                value={score != null ? String(score) : "—"}
+                icon={<IconTarget size={22} stroke={1.5} color="#fde68a" />}
+              />
+            </Box>
+            {runTimeLabel != null ? (
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <GameOverSummaryStat
+                  label="Tiempo de partida"
+                  value={runTimeLabel}
+                  icon={<IconClock size={22} stroke={1.6} color="#fde68a" />}
+                />
+              </Box>
+            ) : null}
+          </Flex>
+
           <Button
             type="button"
             fullWidth
@@ -1214,19 +1278,126 @@ export function GameOverOverlay({ onRetry }) {
   );
 }
 
-export function VictoryOverlay({ onRetry }) {
+export function VictoryOverlay({ onRetry, runTimeLabel }) {
   return (
-    <Stack align="center" gap="md" py="xl" className="game-overlay">
-      <Title order={2} c="green.3">
-        ¡Victoria!
-      </Title>
-      <Text c="dimmed" ta="center" maw={420}>
-        Llegaste a la meta. El enemigo final cae con disparos (entrecierra los
-        ojos).
-      </Text>
-      <button type="button" className="game-primary-btn" onClick={onRetry}>
-        Volver a jugar
-      </button>
-    </Stack>
+    <Box
+      component="section"
+      w="100%"
+      py={{ base: "lg", sm: "xl" }}
+      px="md"
+      className="game-overlay"
+      style={{
+        marginInline: "auto",
+        maxWidth: "min(100%, 560px)",
+      }}
+    >
+      <Paper
+        radius={28}
+        p={{ base: "lg", sm: "xl" }}
+        withBorder
+        bd="1px solid rgba(74, 222, 128, 0.35)"
+        shadow="xl"
+        style={{
+          background:
+            "linear-gradient(165deg, rgba(20, 83, 45, 0.35) 0%, rgba(15, 23, 42, 0.96) 42%, rgba(2, 6, 23, 0.98) 100%)",
+          boxShadow:
+            "0 0 0 1px rgba(34, 197, 94, 0.22), 0 0 48px rgba(34, 197, 94, 0.18), 0 24px 56px rgba(0, 0, 0, 0.55)",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        <Stack gap="lg" align="center">
+          <Badge
+            size="lg"
+            radius="xl"
+            variant="gradient"
+            gradient={{ from: "teal.5", to: "green.6", deg: 120 }}
+            leftSection={<IconTrophy size={16} stroke={1.75} />}
+            styles={{
+              root: {
+                paddingInline: 16,
+                height: 36,
+                textTransform: "none",
+                fontWeight: 800,
+                fontSize: "1.05rem",
+                letterSpacing: "0.02em",
+                boxShadow: "0 4px 18px rgba(34, 197, 94, 0.35)",
+              },
+            }}
+          >
+            ¡Victoria!
+          </Badge>
+
+          <Center w="100%">
+            <Image
+              src={marioBrosWinPng}
+              alt="Mario celebrando la victoria"
+              w="100%"
+              maw={320}
+              mah={240}
+              fit="contain"
+              style={{
+                filter:
+                  "drop-shadow(0 16px 32px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 24px rgba(74, 222, 128, 0.2))",
+              }}
+            />
+          </Center>
+
+          <Divider
+            w="100%"
+            color="rgba(148, 163, 184, 0.25)"
+            label={
+              <ThemeIcon variant="light" color="green" size="sm" radius="xl">
+                <IconSparkles size={14} stroke={1.5} />
+              </ThemeIcon>
+            }
+            labelPosition="center"
+          />
+
+          {runTimeLabel != null ? (
+            <Card
+              w="100%"
+              maw={400}
+              padding="md"
+              radius="md"
+              withBorder
+              style={{
+                background: "rgba(15, 23, 42, 0.72)",
+                borderColor: "rgba(74, 222, 128, 0.22)",
+              }}
+            >
+              <GameOverSummaryStat
+                label="Tiempo de partida"
+                value={runTimeLabel}
+                icon={<IconClock size={22} stroke={1.6} color="#fde68a" />}
+              />
+            </Card>
+          ) : null}
+
+          <Text size="sm" c="gray.4" ta="center" maw={420} lh={1.6}>
+            Llegaste a la meta.
+          </Text>
+
+          <Button
+            type="button"
+            fullWidth
+            maw={400}
+            size="md"
+            radius="md"
+            fw={800}
+            variant="gradient"
+            gradient={{ from: "teal.5", to: "green.7", deg: 125 }}
+            leftSection={<IconRefresh size={18} stroke={1.75} />}
+            onClick={onRetry}
+            styles={{
+              root: {
+                boxShadow: "0 8px 24px rgba(22, 163, 74, 0.45)",
+              },
+            }}
+          >
+            Volver a jugar
+          </Button>
+        </Stack>
+      </Paper>
+    </Box>
   );
 }

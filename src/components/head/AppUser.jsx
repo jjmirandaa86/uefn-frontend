@@ -2,12 +2,7 @@ import { Avatar, Group, Stack, Text } from "@mantine/core";
 
 export function AppUser({ avatarImageSrc, userDisplayName }) {
   return (
-    <Group
-      gap={6}
-      wrap="nowrap"
-      align="center"
-      className="header-recognition"
-    >
+    <Group gap={6} wrap="nowrap" align="center" className="header-recognition">
       <Avatar
         className="header-recognition-avatar"
         size={32}

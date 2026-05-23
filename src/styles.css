@@ -342,6 +342,10 @@ body {
   box-shadow: 0 0 18px rgba(168, 85, 247, 0.7);
 }
 
+.trend-point--emotion {
+  background: var(--emotion-bar-color, #7c3aed);
+}
+
 .trend-value-label {
   flex-shrink: 0;
   max-width: 100%;
@@ -636,17 +640,22 @@ body {
   pointer-events: none;
 }
 
-.dcs-sparkline-wrap {
-  width: 120px;
-  height: 52px;
+.dcs-capture-notice {
+  width: min(200px, 38%);
+  min-height: 52px;
   flex-shrink: 0;
-  opacity: 0.95;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
-.dcs-sparkline {
-  width: 100%;
-  height: 100%;
-  display: block;
+.dcs-capture-notice__filename {
+  max-width: 100%;
+  text-align: right;
+  line-height: 1.25;
+  word-break: break-all;
+  color: #e9d5ff !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
 }
 
 .dcs-snapshot-btn {
@@ -692,6 +701,216 @@ body {
   overflow-x: auto;
   padding-bottom: 6px;
   -webkit-overflow-scrolling: touch;
+}
+
+.history-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.settings-about-body .settings-param-card {
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+}
+
+.settings-about-body .settings-param-card .mantine-TextInput-input {
+  background: rgba(2, 6, 23, 0.55);
+}
+
+.fun-moments-modal-content {
+  width: min(92vw, 680px) !important;
+  max-width: min(92vw, 680px) !important;
+  overflow: hidden;
+}
+
+.fun-moments-modal-shell {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fun-moments-viewport {
+  --fun-moments-viewport-h: 400px;
+  height: var(--fun-moments-viewport-h);
+  max-height: var(--fun-moments-viewport-h);
+  overflow: hidden;
+}
+
+.fun-moments-modal-body {
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fun-moments-modal-body--preview {
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fun-moments-modal-body--preview .fun-moment-preview {
+  height: 100%;
+}
+
+.fun-moments-modal-body__title {
+  margin: 0;
+  color: #f5f3ff;
+  letter-spacing: 0.02em;
+}
+
+.fun-moments-card {
+  border-color: rgba(168, 85, 247, 0.35) !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+}
+
+.fun-moments-grid {
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
+.fun-moment-thumb {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+}
+
+.fun-moment-thumb__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: rgba(2, 6, 23, 0.8);
+}
+
+.fun-moment-thumb__caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 8px 8px;
+  margin: 0;
+}
+
+.fun-moment-thumb__emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.fun-moments-pagination {
+  flex-shrink: 0;
+  padding-top: 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.fun-moments-viewport > .mantine-Stack-root > :first-child,
+.fun-moments-viewport > .mantine-Text-root:first-child {
+  flex-shrink: 0;
+}
+
+.fun-moment-thumb__btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  border-radius: 14px 14px 0 0;
+  overflow: hidden;
+}
+
+.fun-moment-thumb__btn:focus-visible {
+  outline: 2px solid rgba(168, 85, 247, 0.85);
+  outline-offset: 2px;
+}
+
+.fun-moment-preview {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fun-moment-preview__toolbar {
+  flex-shrink: 0;
+}
+
+.fun-moment-preview__figure {
+  margin: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fun-moment-preview__img-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.45);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+}
+
+.fun-moment-preview__img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.fun-moment-preview__caption {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.fun-moment-preview__download {
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.fun-moment-preview__emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.history-date-group + .history-date-group {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.history-date-heading {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #c4b5fd !important;
 }
 
 .history-item {

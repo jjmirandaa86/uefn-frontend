@@ -50,8 +50,8 @@ export const SPRITES = {
   coinDisplay: 34,
   coinHitRadius: 17,
 
-  flagW: 42,
-  flagH: 64,
+  flagW: 56,
+  flagH: 88,
 
   bossDisplayW: 108,
   bossDisplayH: 108,
