@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchTodayHistorySummary } from "../services/emotionHistoryApi.js";
+import {
+  getAppTimezone,
+  parseInstant,
+  resolveAppCalendarDay,
+} from "../utils/appTimezone.js";
 import { EMOTION_HISTORY_STORED_EVENT } from "./useEmotionHistoryRecorder.js";
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function formatLastDetection(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseInstant(value);
   return new Intl.DateTimeFormat("es", {
+    timeZone: getAppTimezone(),
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -37,7 +38,7 @@ export function useTodayEmotionSummary({ faceUser = null } = {}) {
     setError(null);
     try {
       const summary = await fetchTodayHistorySummary({
-        date: todayIsoDate(),
+        date: resolveAppCalendarDay(),
         faceUser: faceUser ?? undefined,
       });
 

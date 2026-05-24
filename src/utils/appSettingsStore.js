@@ -1,4 +1,5 @@
 import { APP_SETTING_FIELDS } from "../config/appSettingsFields.js";
+import { getRuntimeEnv } from "../config/runtimeEnv.js";
 
 const STORAGE_KEY = "uefn_app_settings";
 
@@ -21,7 +22,7 @@ export function getDefaultAppSettings() {
   /** @type {Record<string, string>} */
   const out = {};
   for (const field of APP_SETTING_FIELDS) {
-    const envVal = import.meta.env[field.key];
+    const envVal = getRuntimeEnv(field.key) || import.meta.env[field.key];
     out[field.key] =
       envVal !== undefined && String(envVal).trim() !== ""
         ? String(envVal).trim()
@@ -44,6 +45,46 @@ export function saveAppSettings(values) {
 export function clearStoredAppSettings() {
   window.localStorage.removeItem(STORAGE_KEY);
   window.dispatchEvent(new CustomEvent(APP_SETTINGS_UPDATED_EVENT));
+}
+
+/**
+ * Quita URL http:// del API guardada en el navegador si la app va en HTTPS
+ * (evita mixed content y saltarse el proxy de Vite).
+ */
+export function migrateAppSettingsForHttps() {
+  if (typeof window === "undefined" || window.location.protocol !== "https:") {
+    return;
+  }
+  const stored = loadStoredAppSettings();
+  const url = stored.VITE_BACKEND_URL;
+  if (!url) return;
+  let changed = false;
+  const next = { ...stored };
+
+  try {
+    if (new URL(url).protocol === "http:") {
+      delete next.VITE_BACKEND_URL;
+      changed = true;
+    }
+  } catch {
+    delete next.VITE_BACKEND_URL;
+    changed = true;
+  }
+
+  if (next.VITE_EMOTION_CAPTURE_MIN_DOMINANCE === "15") {
+    next.VITE_EMOTION_CAPTURE_MIN_DOMINANCE = "8";
+    changed = true;
+  }
+  if (next.VITE_EMOTION_CAPTURE_MIN_SCORE === "0.42") {
+    next.VITE_EMOTION_CAPTURE_MIN_SCORE = "0.35";
+    changed = true;
+  }
+
+  if (changed) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(APP_SETTINGS_UPDATED_EVENT));
+    console.info("[MoodVision] Ajustes locales migrados para HTTPS y captura.");
+  }
 }
 
 /**

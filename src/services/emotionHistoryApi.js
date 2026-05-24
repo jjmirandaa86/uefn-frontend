@@ -1,4 +1,5 @@
 import { getAppSettingInt } from "../utils/appSettingsStore.js";
+import { resolveAppCalendarDay } from "../utils/appTimezone.js";
 import { getBackendApiUrl } from "../utils/emotionCapture.js";
 
 const HISTORY_BASE = () => `${getBackendApiUrl()}/api/history`;
@@ -61,7 +62,7 @@ export async function fetchRecentEmotionHistory(opts = {}) {
  */
 export async function fetchTodayHistorySummary(opts = {}) {
   const params = new URLSearchParams();
-  const date = opts.date ?? new Date().toISOString().slice(0, 10);
+  const date = resolveAppCalendarDay(opts.date);
   params.set("date", date);
   if (opts.faceUser) {
     params.set("faceUser", opts.faceUser);
@@ -85,7 +86,7 @@ export async function fetchTodayHistorySummary(opts = {}) {
  */
 export async function fetchTodayEmotionCounts(opts = {}) {
   const params = new URLSearchParams();
-  const date = opts.date ?? new Date().toISOString().slice(0, 10);
+  const date = resolveAppCalendarDay(opts.date);
   params.set("date", date);
   if (opts.faceUser) {
     params.set("faceUser", opts.faceUser);

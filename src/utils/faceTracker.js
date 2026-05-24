@@ -1,7 +1,8 @@
 import * as faceapi from "face-api.js";
+import { getLocalDateFolder } from "./localDateFolder.js";
 
 function todayDateFolder() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateFolder();
 }
 
 /**
@@ -14,7 +15,7 @@ const MATCH_THRESHOLD = 0.6;
 const PENDING_MATCH_THRESHOLD = 0.55;
 
 /** Frames seguidos antes de crear un id definitivo (evita ids fantasma). */
-const STABLE_FRAMES_REQUIRED = 4;
+const STABLE_FRAMES_REQUIRED = 2;
 
 /** Peso del descriptor ya conocido al actualizar (suaviza luz/ángulo). */
 const DESCRIPTOR_BLEND = 0.78;
@@ -83,6 +84,7 @@ function allocFaceId(nextSeq) {
  * face-api.js NO asigna id de persona; esto aproxima un id estable por descriptor.
  */
 export function createFaceTracker() {
+  let loadedDateFolder = todayDateFolder();
   const persisted = loadKnownFromStorage();
   /** @type {{ id: string; descriptor: Float32Array }[]} */
   const known = persisted.known;
@@ -92,6 +94,18 @@ export function createFaceTracker() {
   let pending = null;
 
   const persist = () => saveKnownToStorage(known, nextSeq);
+
+  /** Al cambiar el día, recarga rostros de localStorage (clave por fecha). */
+  const syncCalendarDay = () => {
+    const today = todayDateFolder();
+    if (today === loadedDateFolder) return;
+    loadedDateFolder = today;
+    const fresh = loadKnownFromStorage();
+    known.length = 0;
+    known.push(...fresh.known);
+    nextSeq = fresh.nextSeq;
+    pending = null;
+  };
 
   const findBestMatch = (descriptor) => {
     let best = null;
@@ -118,6 +132,8 @@ export function createFaceTracker() {
       if (!descriptor?.length) {
         return { faceId: "face-unknown", isStable: false };
       }
+
+      syncCalendarDay();
 
       const incoming = cloneDescriptor(descriptor);
       const match = findBestMatch(incoming);

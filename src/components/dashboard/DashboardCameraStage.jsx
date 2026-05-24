@@ -32,7 +32,12 @@ import {
   getEmotionCapturePolicy,
   isConfidenceStillStable,
 } from "../../utils/emotionCapturePolicy.js";
+import {
+  getBackendApiUrl,
+  pingBackendHealth,
+} from "../../utils/backendApiUrl.js";
 import { createFaceTracker } from "../../utils/faceTracker.js";
+import { getLocalDateFolder } from "../../utils/localDateFolder.js";
 import { mapFaceApiToEmotion, mapFaceExpressionsToEmotionRows } from "../../utils/mapFaceApiToEmotion.js";
 
 function pickPrimaryFace(results) {
@@ -86,7 +91,13 @@ export function DashboardCameraStage({
   const isPreviewPausedRef = useRef(false);
   const approximateEmitRef = useRef({ ageYears: null, gender: null });
   const faceTrackerRef = useRef(null);
-  /** Rostro + emoción ya guardados o descartados (sesión / disco). */
+  /** Último rostro estable (historial sigue aunque un frame falle el match). */
+  const lastStableFaceUserRef = useRef(null);
+  /** Día local vigente para reiniciar capturas al cambiar de fecha. */
+  const captureSessionDateRef = useRef(getLocalDateFolder());
+  /** Si no hay descriptor de reconocimiento, id de sesión para historial/captura. */
+  const expressionOnlyFaceIdRef = useRef(null);
+  /** Rostro + emoción ya guardados hoy (sesión en memoria). */
   const capturedFaceEmotionsRef = useRef(new Set());
   const captureInFlightRef = useRef(new Set());
   /**
@@ -103,6 +114,8 @@ export function DashboardCameraStage({
   const captureNoticeTimerRef = useRef(null);
   const [facialPointsEnabled, setFacialPointsEnabled] = useState(true);
   const [isPreviewPaused, setIsPreviewPaused] = useState(false);
+  /** @type {'checking' | 'ok' | 'error' | null} */
+  const [apiLinkStatus, setApiLinkStatus] = useState(null);
   const prevStatusForFacialRef = useRef(status);
 
   const flashCaptureFilename = useCallback((filename) => {
@@ -150,6 +163,9 @@ export function DashboardCameraStage({
       setIsPreviewPaused(false);
       isPreviewPausedRef.current = false;
       faceTrackerRef.current?.reset();
+      lastStableFaceUserRef.current = null;
+      expressionOnlyFaceIdRef.current = null;
+      captureSessionDateRef.current = getLocalDateFolder();
       capturedFaceEmotionsRef.current.clear();
       captureInFlightRef.current.clear();
       capturePendingRef.current = null;
@@ -165,6 +181,30 @@ export function DashboardCameraStage({
     if (status === "ready" && !faceTrackerRef.current) {
       faceTrackerRef.current = createFaceTracker();
     }
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "ready") {
+      setApiLinkStatus(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setApiLinkStatus("checking");
+    void pingBackendHealth()
+      .then(() => {
+        if (!cancelled) setApiLinkStatus("ok");
+      })
+      .catch((err) => {
+        console.error(
+          "[MoodVision] No se pudo conectar al API en",
+          getBackendApiUrl(),
+          err,
+        );
+        if (!cancelled) setApiLinkStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [status]);
 
   const togglePreviewPause = useCallback(() => {
@@ -266,8 +306,18 @@ export function DashboardCameraStage({
             setCurrentFaceUser(faceId);
           };
 
+          const resetCaptureSlotsForNewDay = () => {
+            const today = getLocalDateFolder();
+            if (captureSessionDateRef.current === today) return;
+            captureSessionDateRef.current = today;
+            capturedFaceEmotionsRef.current.clear();
+            captureInFlightRef.current.clear();
+            capturePendingRef.current = null;
+          };
+
           if (!primary) {
             capturePendingRef.current = null;
+            lastStableFaceUserRef.current = null;
             if (lastFaceUserEmittedRef.current !== null) {
               lastFaceUserEmittedRef.current = null;
               setCurrentFaceUser(null);
@@ -331,24 +381,46 @@ export function DashboardCameraStage({
                 return rows;
               });
 
+              resetCaptureSlotsForNewDay();
+
               const tracker = faceTrackerRef.current;
               const descriptor = primary.descriptor;
               const box = primary.detection?.box;
               const captureReadiness = evaluateEmotionCaptureReadiness(
                 primary.expressions,
               );
+              const canCaptureEmotion =
+                captureReadiness.ready ||
+                (next.confidence >= captureReadiness.minConfidence &&
+                  next.key !== "neutral");
 
-              if (
-                tracker &&
-                descriptor &&
-                box &&
-                captureReadiness.ready &&
-                !cancelled
-              ) {
-                const { faceId, isStable } = tracker.resolveFaceId(descriptor);
+              if (box && !cancelled) {
+                let faceId = null;
+                let isStable = false;
+
+                if (tracker && descriptor) {
+                  const resolved = tracker.resolveFaceId(descriptor);
+                  faceId = resolved.faceId;
+                  isStable = resolved.isStable;
+                } else {
+                  if (!expressionOnlyFaceIdRef.current) {
+                    expressionOnlyFaceIdRef.current = `face-session-${getLocalDateFolder()}`;
+                  }
+                  faceId = expressionOnlyFaceIdRef.current;
+                  isStable = true;
+                }
+
                 if (isStable) {
+                  lastStableFaceUserRef.current = faceId;
                   emitFaceUser(faceId);
-                  const emotionForCapture = captureReadiness.emotion;
+                } else if (lastStableFaceUserRef.current) {
+                  emitFaceUser(lastStableFaceUserRef.current);
+                }
+
+                if (canCaptureEmotion && isStable) {
+                  const emotionForCapture = captureReadiness.ready
+                    ? captureReadiness.emotion
+                    : next;
                   const slotKey = faceEmotionSlotKey(
                     faceId,
                     emotionForCapture.key,
@@ -392,9 +464,7 @@ export function DashboardCameraStage({
                         active.peakConfidence,
                         conf,
                       );
-                      if (
-                        now - active.since >= capturePolicy.delayMs
-                      ) {
+                      if (now - active.since >= capturePolicy.delayMs) {
                         const peak = active.peakConfidence;
                         capturePendingRef.current = null;
                         captureInFlightRef.current.add(slotKey);
@@ -408,44 +478,38 @@ export function DashboardCameraStage({
                           },
                           capturedAt: now,
                         })
-                        .then((result) => {
-                          if (result.ok) {
-                            capturedFaceEmotionsRef.current.add(slotKey);
-                            const name =
-                              result.metadata?.nombreArchivo ?? null;
-                            if (name) flashCaptureFilenameRef.current(name);
-                            if (result.skipped) {
-                              console.info(
-                                "[emotion-capture] backend ya tenía:",
-                                name,
-                              );
+                          .then((result) => {
+                            if (result.ok) {
+                              capturedFaceEmotionsRef.current.add(slotKey);
+                              const name =
+                                result.metadata?.nombreArchivo ?? null;
+                              if (name) flashCaptureFilenameRef.current(name);
+                              if (result.skipped) {
+                                console.info(
+                                  "[emotion-capture] backend ya tenía hoy:",
+                                  name,
+                                );
+                              } else {
+                                console.info(
+                                  "[emotion-capture] enviada al backend:",
+                                  name,
+                                );
+                              }
                             } else {
-                              console.info(
-                                "[emotion-capture] enviada al backend:",
-                                name,
-                              );
+                              console.warn("[emotion-capture]", result.error);
                             }
-                          } else {
-                            console.warn("[emotion-capture]", result.error);
-                          }
-                        })
-                        .catch((err) => {
-                          console.error("[emotion-capture]", err);
-                        })
-                        .finally(() => {
-                          captureInFlightRef.current.delete(slotKey);
-                        });
+                          })
+                          .catch((err) => {
+                            console.error("[emotion-capture]", err);
+                          })
+                          .finally(() => {
+                            captureInFlightRef.current.delete(slotKey);
+                          });
                       }
                     }
                   }
-                } else {
-                  if (lastFaceUserEmittedRef.current !== null) {
-                    lastFaceUserEmittedRef.current = null;
-                    setCurrentFaceUser(null);
-                  }
-                  if (capturePendingRef.current) {
-                    capturePendingRef.current = null;
-                  }
+                } else if (capturePendingRef.current) {
+                  capturePendingRef.current = null;
                 }
               } else if (capturePendingRef.current) {
                 capturePendingRef.current = null;
@@ -514,6 +578,8 @@ export function DashboardCameraStage({
       cancelAnimationFrame(rafId);
       approximateEmitRef.current = { ageYears: null, gender: null };
       faceTrackerRef.current?.reset();
+      lastStableFaceUserRef.current = null;
+      expressionOnlyFaceIdRef.current = null;
       capturedFaceEmotionsRef.current.clear();
       captureInFlightRef.current.clear();
       capturePendingRef.current = null;
@@ -599,25 +665,37 @@ export function DashboardCameraStage({
               </Group>
             </Box>
             {status === "ready" ? (
-              <Badge
-                variant="outline"
-                color="violet"
-                size="lg"
-                radius="xl"
-                leftSection={<IconBroadcast size={14} stroke={1.75} />}
-                className="dcs-stage-header__live-badge"
-                styles={{
-                  root: {
-                    borderColor: "rgba(167, 139, 250, 0.55)",
-                    color: "#e9d5ff",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    fontWeight: 700,
-                  },
-                }}
-              >
-                {isPreviewPaused ? "PAUSA" : "LIVE"}
-              </Badge>
+              <Group gap="xs" wrap="wrap" justify="flex-end">
+                <Badge
+                  variant="outline"
+                  color="violet"
+                  size="lg"
+                  radius="xl"
+                  leftSection={<IconBroadcast size={14} stroke={1.75} />}
+                  className="dcs-stage-header__live-badge"
+                  styles={{
+                    root: {
+                      borderColor: "rgba(167, 139, 250, 0.55)",
+                      color: "#e9d5ff",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      fontWeight: 700,
+                    },
+                  }}
+                >
+                  {isPreviewPaused ? "PAUSA" : "LIVE"}
+                </Badge>
+                {apiLinkStatus === "error" ? (
+                  <Badge color="red" variant="filled" size="sm" radius="sm">
+                    API sin conexión
+                  </Badge>
+                ) : null}
+                {apiLinkStatus === "ok" ? (
+                  <Badge color="green" variant="light" size="sm" radius="sm">
+                    API OK
+                  </Badge>
+                ) : null}
+              </Group>
             ) : null}
           </Box>
           {status === "ready" ? (

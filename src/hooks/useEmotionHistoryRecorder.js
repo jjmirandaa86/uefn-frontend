@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { postEmotionHistoryEntry } from "../services/emotionHistoryApi.js";
+import { getBackendApiUrl } from "../utils/backendApiUrl.js";
 
 /** Dispara al guardar un tick en el backend. */
 export const EMOTION_HISTORY_STORED_EVENT = "emotion-history-stored";
@@ -54,7 +55,10 @@ export function useEmotionHistoryRecorder({
         });
         window.dispatchEvent(new CustomEvent(EMOTION_HISTORY_STORED_EVENT));
       } catch (err) {
-        console.warn("[emotion-history]", err);
+        console.warn(
+          `[emotion-history] no se guardó (${getBackendApiUrl()}/api/history). ¿Backend en :3006 y proxy Vite activo?`,
+          err,
+        );
       }
     };
 

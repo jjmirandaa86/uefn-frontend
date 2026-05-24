@@ -1,4 +1,10 @@
 import { emotions } from "../data/emotions.js";
+import {
+  calendarDayInAppTz,
+  getAppTimezone,
+  parseInstant,
+  yesterdayCalendarDayInAppTz,
+} from "./appTimezone.js";
 
 const EMOTION_BY_LABEL = Object.fromEntries(
   emotions.map((e) => [e.label.toLowerCase(), e]),
@@ -19,39 +25,35 @@ export function getEmotionDisplayMeta(label) {
 
 /** @param {string | Date} createdAt */
 export function formatHistoryClock(createdAt) {
-  const d = new Date(createdAt);
+  const d = parseInstant(createdAt);
   if (Number.isNaN(d.getTime())) return "—";
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
+  return new Intl.DateTimeFormat("es", {
+    timeZone: getAppTimezone(),
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
 }
 
 /** @param {string | Date} createdAt @returns {string} YYYY-MM-DD */
 export function getHistoryDateKey(createdAt) {
-  const d = new Date(createdAt);
+  const d = parseInstant(createdAt);
   if (Number.isNaN(d.getTime())) return "unknown";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return calendarDayInAppTz(d);
 }
 
 /** Etiqueta legible: Hoy, Ayer, o "19 may 2026". */
 export function formatHistoryDateLabel(createdAt) {
-  const d = new Date(createdAt);
+  const d = parseInstant(createdAt);
   if (Number.isNaN(d.getTime())) return "—";
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfDay = new Date(d);
-  startOfDay.setHours(0, 0, 0, 0);
-  const diffDays = Math.round(
-    (startOfToday.getTime() - startOfDay.getTime()) / 86_400_000,
-  );
+  const itemDay = calendarDayInAppTz(d);
+  const today = calendarDayInAppTz();
+  if (itemDay === today) return "Hoy";
+  if (itemDay === yesterdayCalendarDayInAppTz()) return "Ayer";
 
-  if (diffDays === 0) return "Hoy";
-  if (diffDays === 1) return "Ayer";
   return new Intl.DateTimeFormat("es", {
+    timeZone: getAppTimezone(),
     day: "numeric",
     month: "short",
     year: "numeric",

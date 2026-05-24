@@ -20,10 +20,10 @@ export const APP_SETTING_FIELDS = [
     key: "VITE_BACKEND_URL",
     title: "URL del backend",
     description:
-      "Dirección base de la API Node (capturas, historial, momentos divertidos). Sin barra final. Ejemplo: http://localhost:3006",
+      "Dirección base de la API Node. Vacío = mismo origen (dev HTTPS + proxy). Producción: URL pública sin barra final.",
     type: "url",
     group: "API y listados",
-    fallback: "http://localhost:3006",
+    fallback: "",
   },
   {
     key: "VITE_EMOTION_HISTORY_RECENT_LIMIT",

@@ -21,11 +21,11 @@ export function getEmotionCapturePolicy() {
       58,
       { min: 10, max: 95 },
     ),
-    minDominanceGap: getAppSettingInt("VITE_EMOTION_CAPTURE_MIN_DOMINANCE", 15, {
+    minDominanceGap: getAppSettingInt("VITE_EMOTION_CAPTURE_MIN_DOMINANCE", 8, {
       min: 0,
       max: 80,
     }),
-    minRawScore: getAppSettingFloat("VITE_EMOTION_CAPTURE_MIN_SCORE", 0.42, {
+    minRawScore: getAppSettingFloat("VITE_EMOTION_CAPTURE_MIN_SCORE", 0.35, {
       min: 0.05,
       max: 0.95,
     }),

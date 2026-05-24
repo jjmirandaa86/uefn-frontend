@@ -1,18 +1,12 @@
-import { getAppSettingString } from "./appSettingsStore.js";
+import { getBackendApiUrl } from "./backendApiUrl.js";
 import { getEmotionCapturePolicy } from "./emotionCapturePolicy.js";
+import { getLocalDateFolder } from "./localDateFolder.js";
+
+export { getBackendApiUrl };
 
 /** @deprecated Usar getEmotionCapturePolicy().delayMs */
 export function getEmotionCaptureDelayMs() {
   return getEmotionCapturePolicy().delayMs;
-}
-
-/** URL base del backend (sin barra final). */
-export function getBackendApiUrl() {
-  const raw = getAppSettingString(
-    "VITE_BACKEND_URL",
-    "http://localhost:3006",
-  );
-  return raw.replace(/\/$/, "");
 }
 
 /**
@@ -71,9 +65,16 @@ export function sanitizeFilenamePart(value, fallback = "unknown") {
   );
 }
 
-/** Clave única rostro + emoción (sesión en memoria). */
-export function faceEmotionSlotKey(faceId, emotionKey) {
-  return `${sanitizeFilenamePart(faceId, "face")}:${sanitizeFilenamePart(emotionKey, "neutral")}`;
+/**
+ * Clave única día + rostro + emoción (sesión en memoria).
+ * Incluye la fecha local para permitir una captura por emoción cada día nuevo.
+ */
+export function faceEmotionSlotKey(
+  faceId,
+  emotionKey,
+  dateFolder = getLocalDateFolder(),
+) {
+  return `${dateFolder}:${sanitizeFilenamePart(faceId, "face")}:${sanitizeFilenamePart(emotionKey, "neutral")}`;
 }
 
 /**
@@ -182,7 +183,12 @@ export async function sendEmotionCaptureToBackend({
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    return { ok: false, error: text || res.statusText };
+    const error = text || res.statusText;
+    console.warn(
+      `[emotion-capture] POST ${getEmotionCapturesEndpoint()} → ${res.status}`,
+      error,
+    );
+    return { ok: false, error, status: res.status };
   }
 
   const data = await res.json().catch(() => ({}));

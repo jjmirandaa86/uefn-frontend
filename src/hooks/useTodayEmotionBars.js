@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchTodayEmotionCounts } from "../services/emotionHistoryApi.js";
+import { resolveAppCalendarDay } from "../utils/appTimezone.js";
 import { buildTodayEmotionBars } from "../utils/emotionHistoryDisplay.js";
 import { EMOTION_HISTORY_STORED_EVENT } from "./useEmotionHistoryRecorder.js";
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 /**
  * @param {{ enabled?: boolean; faceUser?: string | null }} [opts]
@@ -21,7 +18,7 @@ export function useTodayEmotionBars({ enabled = true, faceUser = null } = {}) {
     setError(null);
     try {
       const data = await fetchTodayEmotionCounts({
-        date: todayIsoDate(),
+        date: resolveAppCalendarDay(),
         faceUser: faceUser ?? undefined,
       });
       setApiData(data);
@@ -31,7 +28,7 @@ export function useTodayEmotionBars({ enabled = true, faceUser = null } = {}) {
           ? e.message
           : "No se pudieron cargar las emociones de hoy",
       );
-      setApiData({ total: 0, byEmotion: [], date: todayIsoDate() });
+      setApiData({ total: 0, byEmotion: [], date: resolveAppCalendarDay() });
     } finally {
       setLoading(false);
     }
