@@ -8,7 +8,7 @@ escape_js() {
 cat > /usr/share/nginx/html/config.js <<EOF
 window.__ENV__ = {
   VITE_BACKEND_URL: '$(escape_js "${VITE_BACKEND_URL:-}")',
-  VITE_APP_TIMEZONE: '$(escape_js "${VITE_APP_TIMEZONE:-Australia/Sydney}")',
+  VITE_APP_TIMEZONE: '$(escape_js "${VITE_APP_TIMEZONE:-}")',
   VITE_FACE_API_MODELS_URL: '$(escape_js "${VITE_FACE_API_MODELS_URL:-}")',
   VITE_EMOTION_HISTORY_RECENT_LIMIT: '$(escape_js "${VITE_EMOTION_HISTORY_RECENT_LIMIT:-}")',
   VITE_FUN_MOMENTS_PAGE_SIZE: '$(escape_js "${VITE_FUN_MOMENTS_PAGE_SIZE:-}")',
