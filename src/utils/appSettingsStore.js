@@ -96,6 +96,10 @@ export function getAppSettingString(key, fallback = "") {
   if (stored !== undefined && String(stored).trim() !== "") {
     return String(stored).trim();
   }
+  const runtime = getRuntimeEnv(key);
+  if (runtime !== "") {
+    return runtime;
+  }
   const env = import.meta.env[key];
   if (env !== undefined && String(env).trim() !== "") {
     return String(env).trim();
