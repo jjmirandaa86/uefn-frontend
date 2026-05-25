@@ -22,6 +22,7 @@ import {
   EMOTION_ROWS_IDLE,
   NEUTRAL_FALLBACK,
 } from "../../dashboard/liveEmotionDefaults.js";
+import { usePauseCameraPreview } from "../../hooks/usePauseCameraPreview.js";
 import { detectFacesLandmarksExpressionsFromVideo } from "../../services/faceApi.js";
 import {
   faceEmotionSlotKey,
@@ -75,7 +76,15 @@ export function DashboardCameraStage({
   status,
   startCamera,
   stopCamera,
+  detectionPaused = false,
+  previewPaused = false,
 }) {
+  const detectionPausedRef = useRef(detectionPaused);
+  useEffect(() => {
+    detectionPausedRef.current = detectionPaused;
+  }, [detectionPaused]);
+
+  usePauseCameraPreview(videoRef, previewPaused, status);
   const {
     liveEmotion,
     setLiveEmotion,
@@ -231,39 +240,74 @@ export function DashboardCameraStage({
 
   useEffect(() => {
     const canvas = landmarksCanvasRef.current;
-    if (status !== "ready") {
-      if (canvas) {
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        canvas.width = 0;
-        canvas.height = 0;
-      }
-      return undefined;
-    }
+    if (status === "ready") return undefined;
 
+    approximateEmitRef.current = { ageYears: null, gender: null };
+    faceTrackerRef.current?.reset();
+    lastStableFaceUserRef.current = null;
+    expressionOnlyFaceIdRef.current = null;
+    capturedFaceEmotionsRef.current.clear();
+    captureInFlightRef.current.clear();
+    capturePendingRef.current = null;
+    lastFaceUserEmittedRef.current = null;
+    setCurrentFaceUser(null);
+    setLiveEmotion(NEUTRAL_FALLBACK);
+    setEmotionRows(EMOTION_ROWS_IDLE);
+    setApproximateProfile(APPROXIMATE_PROFILE_IDLE);
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+    return undefined;
+  }, [
+    status,
+    setLiveEmotion,
+    setEmotionRows,
+    setApproximateProfile,
+    setCurrentFaceUser,
+  ]);
+
+  useEffect(() => {
+    if (status !== "ready") return undefined;
+
+    const canvas = landmarksCanvasRef.current;
     let cancelled = false;
     let rafId = 0;
     let busy = false;
+    let idleTimer = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const blocked =
+        isPreviewPausedRef.current || detectionPausedRef.current;
+      if (blocked) {
+        idleTimer = window.setTimeout(loop, 200);
+        return;
+      }
+      rafId = requestAnimationFrame(loop);
+    };
 
     const loop = () => {
       if (cancelled) return;
-      rafId = requestAnimationFrame(async () => {
+      void (async () => {
         if (cancelled) return;
         const video = videoRef?.current;
         const c = landmarksCanvasRef.current;
         if (!video || video.readyState < 2) {
-          if (!cancelled) loop();
+          scheduleNext();
           return;
         }
-        if (isPreviewPausedRef.current) {
-          if (!cancelled) loop();
+        if (isPreviewPausedRef.current || detectionPausedRef.current) {
+          scheduleNext();
           return;
         }
         if (busy) {
-          if (!cancelled) loop();
+          scheduleNext();
           return;
         }
         busy = true;
@@ -566,9 +610,9 @@ export function DashboardCameraStage({
           console.error("[DashboardCameraStage] face pipeline:", e);
         } finally {
           busy = false;
-          if (!cancelled) loop();
+          if (!cancelled) scheduleNext();
         }
-      });
+      })();
     };
 
     loop();
@@ -576,23 +620,12 @@ export function DashboardCameraStage({
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafId);
-      approximateEmitRef.current = { ageYears: null, gender: null };
-      faceTrackerRef.current?.reset();
-      lastStableFaceUserRef.current = null;
-      expressionOnlyFaceIdRef.current = null;
-      capturedFaceEmotionsRef.current.clear();
-      captureInFlightRef.current.clear();
-      capturePendingRef.current = null;
+      window.clearTimeout(idleTimer);
       setCaptureNoticeFilename(null);
       if (captureNoticeTimerRef.current) {
         clearTimeout(captureNoticeTimerRef.current);
         captureNoticeTimerRef.current = null;
       }
-      lastFaceUserEmittedRef.current = null;
-      setCurrentFaceUser(null);
-      setLiveEmotion(NEUTRAL_FALLBACK);
-      setEmotionRows(EMOTION_ROWS_IDLE);
-      setApproximateProfile(APPROXIMATE_PROFILE_IDLE);
       if (canvas) {
         const ctx = canvas.getContext("2d");
         if (ctx) {

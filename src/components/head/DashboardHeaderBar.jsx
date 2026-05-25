@@ -1,5 +1,6 @@
 import { ActionIcon, Burger, Group } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
+import { useClock } from "../../hooks/useClock.js";
 import { AppHour } from "./AppHour.jsx";
 import { AppTitle } from "./AppTitle.jsx";
 import { AppUser } from "./AppUser.jsx";
@@ -9,13 +10,13 @@ export function DashboardHeaderBar({
   onToggleMobile,
   desktopNavbarExpanded,
   onToggleDesktopNavbar,
-  time,
-  date,
   avatarImageSrc,
   userDisplayName,
   onOpenSettings,
   appTitle = "MoodVision AI",
 }) {
+  const { time, date } = useClock();
+
   return (
     <Group h="100%" px="sm" justify="space-between" wrap="nowrap" gap="xs">
       <Group gap={6} wrap="nowrap">

@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Text } from "@mantine/core";
 import { useRecentEmotionHistory } from "../../../hooks/useRecentEmotionHistory.js";
 import { groupHistoryItemsByDate } from "../../../utils/emotionHistoryDisplay.js";
 
-function HistoryItemCard({ item }) {
+const HistoryItemCard = memo(function HistoryItemCard({ item }) {
   return (
     <div className="history-item" style={{ borderBottomColor: item.color }}>
       <span style={{ color: item.color, fontSize: "30px" }}>{item.emoji}</span>
@@ -13,11 +13,15 @@ function HistoryItemCard({ item }) {
       </Text>
     </div>
   );
-}
+});
 
-export function RecentHistoryBody({ active = true }) {
+export function RecentHistoryBody({
+  active = true,
+  refreshOnStored = true,
+}) {
   const { items, loading, error, limit } = useRecentEmotionHistory({
     enabled: active,
+    refreshOnStored,
   });
 
   const groups = useMemo(() => groupHistoryItemsByDate(items), [items]);

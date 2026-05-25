@@ -76,8 +76,22 @@ body {
   padding-top: 4px;
 }
 
+/* Header/nav sin blur: al abrir/cerrar el menú lateral el GPU no recomponía sobre el vídeo. */
 .shell-header,
-.shell-navbar,
+.shell-navbar {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(
+    145deg,
+    rgba(15, 23, 42, 0.92),
+    rgba(15, 23, 42, 0.82)
+  );
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.shell-header {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
 .glass-card {
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: linear-gradient(
@@ -86,11 +100,6 @@ body {
     rgba(15, 23, 42, 0.42)
   );
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(20px);
-}
-
-.shell-header {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .header-recognition {
@@ -135,7 +144,6 @@ body {
   box-shadow:
     0 -1px 0 rgba(255, 255, 255, 0.04),
     0 -12px 40px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(16px);
   padding: 0 !important;
 }
 
@@ -289,7 +297,6 @@ body {
     rgba(30, 27, 75, 0.88)
   );
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(18px);
 }
 
 .stats-modal-header {
@@ -535,8 +542,6 @@ body {
   border-radius: 12px;
   background: rgba(8, 8, 14, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   pointer-events: auto;
 }
@@ -634,8 +639,6 @@ body {
   border-radius: 16px;
   background: rgba(8, 8, 14, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.16);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }
@@ -710,6 +713,107 @@ body {
   max-height: min(52vh, 420px);
   overflow-y: auto;
   padding-right: 4px;
+}
+
+.history-light-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.history-light-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(2, 6, 23, 0.55);
+  cursor: pointer;
+}
+
+.history-light-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(94vw, 960px);
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(
+    155deg,
+    rgba(15, 23, 42, 0.98),
+    rgba(30, 27, 75, 0.94)
+  );
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.history-light-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.history-light-modal__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #f8fafc;
+}
+
+.history-light-modal__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.history-light-modal__body {
+  padding: 12px 20px 20px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.history-light-modal__hint,
+.history-light-modal__error {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.history-light-modal__hint {
+  color: #94a3b8;
+}
+
+.history-light-modal__error {
+  color: #f87171;
+}
+
+.history-item__emoji {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.history-item__time,
+.history-item__conf {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
 }
 
 .settings-about-body .settings-param-card {

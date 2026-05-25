@@ -39,9 +39,11 @@ export function DashboardModals({
         opened={historyModalOpened}
         onClose={onHistoryModalClose}
         title="Historial reciente"
-        size="xl"
+        size="lg"
       >
-        <RecentHistoryBody active={historyModalOpened} />
+        {historyModalOpened ? (
+          <RecentHistoryBody active refreshOnStored={false} />
+        ) : null}
       </AppModal>
 
       <AppModal

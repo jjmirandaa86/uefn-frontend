@@ -29,21 +29,33 @@ export function parseInstant(value) {
   return Number.isNaN(d.getTime()) ? new Date() : d;
 }
 
+/** @type {Map<string, Intl.DateTimeFormat>} */
+const zonedPartsFormatters = new Map();
+
+function getZonedPartsFormatter(timeZone) {
+  let dtf = zonedPartsFormatters.get(timeZone);
+  if (!dtf) {
+    dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hourCycle: "h23",
+    });
+    zonedPartsFormatters.set(timeZone, dtf);
+  }
+  return dtf;
+}
+
 /**
  * @param {number} utcMs
  * @param {string} [timeZone]
  */
 export function getZonedParts(utcMs, timeZone = getAppTimezone()) {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hourCycle: "h23",
-  });
+  const dtf = getZonedPartsFormatter(timeZone);
   const map = Object.fromEntries(
     dtf
       .formatToParts(new Date(utcMs))

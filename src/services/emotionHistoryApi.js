@@ -38,7 +38,7 @@ export async function postEmotionHistoryEntry(payload) {
 }
 
 /**
- * @param {{ limit?: number; faceUser?: string | null }} [opts]
+ * @param {{ limit?: number; faceUser?: string | null; signal?: AbortSignal }} [opts]
  */
 export async function fetchRecentEmotionHistory(opts = {}) {
   const limit = opts.limit ?? getEmotionHistoryRecentLimit();
@@ -47,7 +47,9 @@ export async function fetchRecentEmotionHistory(opts = {}) {
     params.set("faceUser", opts.faceUser);
   }
 
-  const res = await fetch(`${HISTORY_BASE()}/recent?${params.toString()}`);
+  const res = await fetch(`${HISTORY_BASE()}/recent?${params.toString()}`, {
+    signal: opts.signal,
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(text || res.statusText);

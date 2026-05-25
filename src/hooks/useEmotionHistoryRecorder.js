@@ -24,6 +24,7 @@ export function useEmotionHistoryRecorder({
   liveEmotion,
   sessionTimer,
   currentFaceUser,
+  paused = false,
 }) {
   const liveRef = useRef(liveEmotion);
   const sessionTimerRef = useRef(sessionTimer);
@@ -36,7 +37,11 @@ export function useEmotionHistoryRecorder({
   }, [liveEmotion, sessionTimer, currentFaceUser]);
 
   useEffect(() => {
-    if (status !== "ready" || cameraSessionStartedAt == null) {
+    if (
+      paused ||
+      status !== "ready" ||
+      cameraSessionStartedAt == null
+    ) {
       return undefined;
     }
 
@@ -67,5 +72,5 @@ export function useEmotionHistoryRecorder({
       void tick();
     }, 1000);
     return () => window.clearInterval(id);
-  }, [status, cameraSessionStartedAt]);
+  }, [paused, status, cameraSessionStartedAt]);
 }

@@ -10,6 +10,45 @@ const EMOTION_BY_LABEL = Object.fromEntries(
   emotions.map((e) => [e.label.toLowerCase(), e]),
 );
 
+/** @type {Intl.DateTimeFormat | null} */
+let historyClockFormatter = null;
+/** @type {Intl.DateTimeFormat | null} */
+let historyDateLabelFormatter = null;
+
+function getHistoryClockFormatter() {
+  if (!historyClockFormatter) {
+    historyClockFormatter = new Intl.DateTimeFormat("es", {
+      timeZone: getAppTimezone(),
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  return historyClockFormatter;
+}
+
+function getHistoryDateLabelFormatter() {
+  if (!historyDateLabelFormatter) {
+    historyDateLabelFormatter = new Intl.DateTimeFormat("es", {
+      timeZone: getAppTimezone(),
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+  return historyDateLabelFormatter;
+}
+
+/**
+ * Claves de hoy/ayer en APP_TIMEZONE (una vez por lote de historial).
+ * @returns {{ todayKey: string; yesterdayKey: string }}
+ */
+export function createHistoryDayContext() {
+  const todayKey = calendarDayInAppTz();
+  const yesterdayKey = yesterdayCalendarDayInAppTz();
+  return { todayKey, yesterdayKey };
+}
+
 export function getEmotionDisplayMeta(label) {
   const key = String(label ?? "")
     .trim()
@@ -27,12 +66,7 @@ export function getEmotionDisplayMeta(label) {
 export function formatHistoryClock(createdAt) {
   const d = parseInstant(createdAt);
   if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("es", {
-    timeZone: getAppTimezone(),
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(d);
+  return getHistoryClockFormatter().format(d);
 }
 
 /** @param {string | Date} createdAt @returns {string} YYYY-MM-DD */
@@ -42,22 +76,23 @@ export function getHistoryDateKey(createdAt) {
   return calendarDayInAppTz(d);
 }
 
-/** Etiqueta legible: Hoy, Ayer, o "19 may 2026". */
-export function formatHistoryDateLabel(createdAt) {
+/**
+ * Etiqueta legible: Hoy, Ayer, o "19 may 2026".
+ * @param {string | Date} createdAt
+ * @param {{ todayKey: string; yesterdayKey: string } | null} [dayContext]
+ */
+export function formatHistoryDateLabel(createdAt, dayContext = null) {
   const d = parseInstant(createdAt);
   if (Number.isNaN(d.getTime())) return "—";
 
   const itemDay = calendarDayInAppTz(d);
-  const today = calendarDayInAppTz();
-  if (itemDay === today) return "Hoy";
-  if (itemDay === yesterdayCalendarDayInAppTz()) return "Ayer";
+  const todayKey = dayContext?.todayKey ?? calendarDayInAppTz();
+  if (itemDay === todayKey) return "Hoy";
+  const yesterdayKey =
+    dayContext?.yesterdayKey ?? yesterdayCalendarDayInAppTz();
+  if (itemDay === yesterdayKey) return "Ayer";
 
-  return new Intl.DateTimeFormat("es", {
-    timeZone: getAppTimezone(),
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(d);
+  return getHistoryDateLabelFormatter().format(d);
 }
 
 /**
@@ -199,14 +234,15 @@ export function groupHistoryItemsByDate(items) {
 }
 
 /** @param {{ id: number; emocion: string; nivelConfianza: number | null; faceUser: string; createdAt: string }} row */
-export function mapApiHistoryToDisplayItem(row) {
+export function mapApiHistoryToDisplayItem(row, dayContext = null) {
+  const ctx = dayContext ?? createHistoryDayContext();
   const meta = getEmotionDisplayMeta(row.emocion);
   const dateKey = getHistoryDateKey(row.createdAt);
   return {
     id: row.id,
     createdAt: row.createdAt,
     dateKey,
-    dateLabel: formatHistoryDateLabel(row.createdAt),
+    dateLabel: formatHistoryDateLabel(row.createdAt, ctx),
     time: formatHistoryClock(row.createdAt),
     label: row.emocion ?? meta.label,
     emoji: meta.emoji,
@@ -214,4 +250,10 @@ export function mapApiHistoryToDisplayItem(row) {
     nivelConfianza: row.nivelConfianza,
     faceUser: row.faceUser,
   };
+}
+
+/** Mapeo en lote: hoy/ayer y formateadores Intl se calculan una sola vez. */
+export function mapApiHistoryRowsToDisplayItems(rows) {
+  const dayContext = createHistoryDayContext();
+  return rows.map((row) => mapApiHistoryToDisplayItem(row, dayContext));
 }

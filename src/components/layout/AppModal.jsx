@@ -1,6 +1,7 @@
 import { Modal, Text } from "@mantine/core";
 
-const DEFAULT_OVERLAY_PROPS = { backgroundOpacity: 0.55, blur: 4 };
+const DEFAULT_OVERLAY_PROPS = { backgroundOpacity: 0.55 };
+const DEFAULT_TRANSITION_PROPS = { duration: 0, transition: "fade" };
 
 const DEFAULT_CLASS_NAMES = {
   content: "stats-modal-content",
@@ -28,7 +29,10 @@ export function AppModal({
   centered = true,
   radius = "lg",
   overlayProps,
+  transitionProps,
   classNames,
+  lockScroll = false,
+  returnFocus = false,
   ...rest
 }) {
   return (
@@ -39,7 +43,10 @@ export function AppModal({
       centered={centered}
       size={size}
       radius={radius}
+      lockScroll={lockScroll}
+      returnFocus={returnFocus}
       overlayProps={{ ...DEFAULT_OVERLAY_PROPS, ...overlayProps }}
+      transitionProps={{ ...DEFAULT_TRANSITION_PROPS, ...transitionProps }}
       classNames={{ ...DEFAULT_CLASS_NAMES, ...classNames }}
       {...rest}
     >

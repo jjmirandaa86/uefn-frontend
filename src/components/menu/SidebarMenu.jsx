@@ -23,6 +23,15 @@ export function SidebarMenu({
             color="violet"
             mb={4}
             onClick={() => onItemClick(item.id)}
+            onMouseEnter={
+              item.id === "historial"
+                ? () => {
+                    import("../../utils/recentHistoryCache.js").then((m) =>
+                      m.prefetchRecentEmotionHistory(),
+                    );
+                  }
+                : undefined
+            }
           />
         );
       })}

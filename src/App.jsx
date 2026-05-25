@@ -1,12 +1,7 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { DashboardLiveSessionProvider } from "./context/DashboardLiveSessionContext.jsx";
-import {
-  APPROXIMATE_PROFILE_IDLE,
-  EMOTION_ROWS_IDLE,
-  NEUTRAL_FALLBACK,
-} from "./dashboard/liveEmotionDefaults.js";
 import { getProfileAvatarById } from "./data/profileAvatars.js";
 import { DashboardCameraStage } from "./components/dashboard/DashboardCameraStage.jsx";
 import { DashboardLeftColumn } from "./components/dashboard/DashboardLeftColumn.jsx";
@@ -17,32 +12,7 @@ import { ShellFooterCredits } from "./components/footer/ShellFooterCredits.jsx";
 import { DashboardHeaderBar } from "./components/head/DashboardHeaderBar.jsx";
 import { SidebarMenu } from "./components/menu/SidebarMenu.jsx";
 import { useCamera } from "./hooks/useCamera";
-import { useClock } from "./hooks/useClock";
-import { useEmotionHistoryRecorder } from "./hooks/useEmotionHistoryRecorder.js";
-import { formatSecondsAsClock } from "./utils/formatDetectedDuration.js";
-
-const SESSION_TIMER_INITIAL = { pauseMs: 0, pauseBeganAt: null };
-
-/** Pausas del contador "Tiempo detectado" (ms en pausa ya cerradas + inicio de la pausa actual). */
-function sessionTimerReducer(state, action) {
-  switch (action.type) {
-    case "reset":
-      return SESSION_TIMER_INITIAL;
-    case "pause":
-      if (state.pauseBeganAt != null) return state;
-      return { ...state, pauseBeganAt: Date.now() };
-    case "resume": {
-      const began = state.pauseBeganAt;
-      if (began == null) return state;
-      return {
-        pauseMs: state.pauseMs + (Date.now() - began),
-        pauseBeganAt: null,
-      };
-    }
-    default:
-      return state;
-  }
-}
+import { prefetchRecentEmotionHistory } from "./utils/recentHistoryCache.js";
 
 function App() {
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] =
@@ -59,6 +29,8 @@ function App() {
     historyModalOpened,
     { open: openHistoryModal, close: closeHistoryModal },
   ] = useDisclosure(false);
+  const [holdPipelineAfterHistory, setHoldPipelineAfterHistory] =
+    useState(false);
   const [
     funMomentsModalOpened,
     { open: openFunMomentsModal, close: closeFunMomentsModal },
@@ -75,83 +47,28 @@ function App() {
   const [userDisplayName, setUserDisplayName] = useState("Jefferson");
   const [userAvatarId, setUserAvatarId] = useState("avatar-001");
   const [activeNav, setActiveNav] = useState("inicio");
-  const { time, date } = useClock();
   const { videoRef, status, startCamera, stopCamera, cameraSessionStartedAt } =
     useCamera();
   const headerAvatar = getProfileAvatarById(userAvatarId);
 
-  const [liveEmotion, setLiveEmotion] = useState(NEUTRAL_FALLBACK);
-  const [emotionRows, setEmotionRows] = useState(EMOTION_ROWS_IDLE);
-  const [approximateProfile, setApproximateProfile] = useState(
-    APPROXIMATE_PROFILE_IDLE,
-  );
-  const [sessionTimer, dispatchSessionTimer] = useReducer(
-    sessionTimerReducer,
-    SESSION_TIMER_INITIAL,
-  );
-  /** Segundos de sesión mostrados (congelados en pausa; avanzan al reanudar). */
-  const [detectedSessionSeconds, setDetectedSessionSeconds] = useState(0);
-  const [currentFaceUser, setCurrentFaceUser] = useState(null);
-
-  const pauseSessionTimer = useCallback(() => {
-    dispatchSessionTimer({ type: "pause" });
+  useEffect(() => {
+    void prefetchRecentEmotionHistory();
   }, []);
 
-  const resumeSessionTimer = useCallback(() => {
-    dispatchSessionTimer({ type: "resume" });
-  }, []);
+  const dashboardModalOpen =
+    statsModalOpened ||
+    historyModalOpened ||
+    todayModalOpened ||
+    funMomentsModalOpened ||
+    settingsModalOpened ||
+    profileModalOpened;
 
-  useEffect(() => {
-    if (status !== "ready") {
-      dispatchSessionTimer({ type: "reset" });
-    }
-  }, [status]);
+  /** Menú/modal: pausar detección (ref, sin reiniciar effect) y vídeo solo en modales. */
+  const dashboardUiBlocked =
+    dashboardModalOpen || mobileOpened || desktopNavbarExpanded;
 
-  useEffect(() => {
-    if (status !== "ready" || cameraSessionStartedAt == null) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- al cortar cámara el contador vuelve a 0
-      setDetectedSessionSeconds(0);
-      return;
-    }
-    const { pauseMs, pauseBeganAt } = sessionTimer;
-    const tick = () => {
-      const ms =
-        pauseBeganAt != null
-          ? pauseBeganAt - cameraSessionStartedAt - pauseMs
-          : Date.now() - cameraSessionStartedAt - pauseMs;
-      setDetectedSessionSeconds(Math.max(0, Math.floor(ms / 1000)));
-    };
-    tick();
-    if (pauseBeganAt != null) {
-      return;
-    }
-    const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, [status, cameraSessionStartedAt, sessionTimer]);
-
-  const detectedSessionDuration = useMemo(
-    () => formatSecondsAsClock(detectedSessionSeconds),
-    [detectedSessionSeconds],
-  );
-
-  useEmotionHistoryRecorder({
-    status,
-    cameraSessionStartedAt,
-    liveEmotion,
-    sessionTimer,
-    currentFaceUser,
-  });
-
-  useEffect(() => {
-    if (status !== "ready") {
-      setCurrentFaceUser(null);
-    }
-  }, [status]);
-
-  const sessionLiveEmotion =
-    status === "ready" ? liveEmotion : NEUTRAL_FALLBACK;
-  const sessionEmotionRows =
-    status === "ready" ? emotionRows : EMOTION_ROWS_IDLE;
+  const pipelinePaused =
+    dashboardUiBlocked || holdPipelineAfterHistory;
 
   const handleProfileModalClose = () => {
     closeProfileModal();
@@ -255,6 +172,8 @@ function App() {
   const handleHistoryModalClose = () => {
     closeHistoryModal();
     setActiveNav((prev) => (prev === "historial" ? "inicio" : prev));
+    setHoldPipelineAfterHistory(true);
+    window.setTimeout(() => setHoldPipelineAfterHistory(false), 400);
   };
 
   const handleFunMomentsModalClose = () => {
@@ -285,6 +204,7 @@ function App() {
   return (
     <AppShell
       mode="static"
+      transitionDuration={0}
       header={{ height: 56 }}
       navbar={{
         width: 260,
@@ -301,8 +221,6 @@ function App() {
           onToggleMobile={toggleMobile}
           desktopNavbarExpanded={desktopNavbarExpanded}
           onToggleDesktopNavbar={toggleDesktopNavbar}
-          time={time}
-          date={date}
           avatarImageSrc={headerAvatar.imageSrc}
           userDisplayName={userDisplayName}
           onOpenSettings={openSettings}
@@ -313,44 +231,34 @@ function App() {
         <SidebarMenu activeNav={activeNav} onItemClick={handleNavClick} />
       </AppShell.Navbar>
 
-      <DashboardLiveSessionProvider
-        liveEmotion={sessionLiveEmotion}
-        setLiveEmotion={setLiveEmotion}
-        emotionRows={sessionEmotionRows}
-        setEmotionRows={setEmotionRows}
-        approximateProfile={approximateProfile}
-        setApproximateProfile={setApproximateProfile}
-        cameraSessionStartedAt={cameraSessionStartedAt}
-        detectedSessionSeconds={detectedSessionSeconds}
-        detectedSessionDuration={detectedSessionDuration}
-        pauseSessionTimer={pauseSessionTimer}
-        resumeSessionTimer={resumeSessionTimer}
-        currentFaceUser={currentFaceUser}
-        setCurrentFaceUser={setCurrentFaceUser}
-      >
-        <DashboardModals
-          statsModalOpened={statsModalOpened}
-          onStatsModalClose={handleStatsModalClose}
-          todayModalOpened={todayModalOpened}
-          onTodayModalClose={handleTodayModalClose}
-          historyModalOpened={historyModalOpened}
-          onHistoryModalClose={handleHistoryModalClose}
-          funMomentsModalOpened={funMomentsModalOpened}
-          onFunMomentsModalClose={handleFunMomentsModalClose}
-          settingsModalOpened={settingsModalOpened}
-          onSettingsModalClose={closeSettingsModal}
-          profileModalOpened={profileModalOpened}
-          onProfileModalClose={handleProfileModalClose}
-          profileEditorKey={profileEditorKey}
-          userDisplayName={userDisplayName}
-          userAvatarId={userAvatarId}
-          onProfileSave={(next) => {
-            setUserDisplayName(next.name);
-            setUserAvatarId(next.avatarId);
-            handleProfileModalClose();
-          }}
-        />
+      <DashboardModals
+        statsModalOpened={statsModalOpened}
+        onStatsModalClose={handleStatsModalClose}
+        todayModalOpened={todayModalOpened}
+        onTodayModalClose={handleTodayModalClose}
+        historyModalOpened={historyModalOpened}
+        onHistoryModalClose={handleHistoryModalClose}
+        funMomentsModalOpened={funMomentsModalOpened}
+        onFunMomentsModalClose={handleFunMomentsModalClose}
+        settingsModalOpened={settingsModalOpened}
+        onSettingsModalClose={closeSettingsModal}
+        profileModalOpened={profileModalOpened}
+        onProfileModalClose={handleProfileModalClose}
+        profileEditorKey={profileEditorKey}
+        userDisplayName={userDisplayName}
+        userAvatarId={userAvatarId}
+        onProfileSave={(next) => {
+          setUserDisplayName(next.name);
+          setUserAvatarId(next.avatarId);
+          handleProfileModalClose();
+        }}
+      />
 
+      <DashboardLiveSessionProvider
+        status={status}
+        cameraSessionStartedAt={cameraSessionStartedAt}
+        recordingPaused={dashboardModalOpen}
+      >
         <AppShell.Main className="app-main-content">
           {activeNav === "game" ? (
             <GameScreen />
@@ -363,6 +271,8 @@ function App() {
                 status={status}
                 startCamera={startCamera}
                 stopCamera={stopCamera}
+                detectionPaused={pipelinePaused}
+                previewPaused={dashboardModalOpen || holdPipelineAfterHistory}
               />
 
               <DashboardRightColumn
