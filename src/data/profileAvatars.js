@@ -29,7 +29,7 @@ export const PROFILE_AVATARS = Array.from(
       id,
       label: `#${pad}`,
       gender,
-      imageSrc: localAvatar(`avatar-${pad}.png`),
+      imageSrc: localAvatar(`avatar-${pad}.webp`),
     };
   },
 );

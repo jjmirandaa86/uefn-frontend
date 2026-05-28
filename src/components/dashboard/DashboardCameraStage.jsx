@@ -39,7 +39,10 @@ import {
 } from "../../utils/backendApiUrl.js";
 import { createFaceTracker } from "../../utils/faceTracker.js";
 import { getLocalDateFolder } from "../../utils/localDateFolder.js";
-import { mapFaceApiToEmotion, mapFaceExpressionsToEmotionRows } from "../../utils/mapFaceApiToEmotion.js";
+import {
+  mapFaceApiToEmotion,
+  mapFaceExpressionsToEmotionRows,
+} from "../../utils/mapFaceApiToEmotion.js";
 
 function pickPrimaryFace(results) {
   if (!results?.length) return null;
@@ -231,12 +234,7 @@ export function DashboardCameraStage({
       }
       return next;
     });
-  }, [
-    videoRef,
-    status,
-    pauseSessionTimer,
-    resumeSessionTimer,
-  ]);
+  }, [videoRef, status, pauseSessionTimer, resumeSessionTimer]);
 
   useEffect(() => {
     const canvas = landmarksCanvasRef.current;
@@ -283,8 +281,7 @@ export function DashboardCameraStage({
 
     const scheduleNext = () => {
       if (cancelled) return;
-      const blocked =
-        isPreviewPausedRef.current || detectionPausedRef.current;
+      const blocked = isPreviewPausedRef.current || detectionPausedRef.current;
       if (blocked) {
         idleTimer = window.setTimeout(loop, 200);
         return;

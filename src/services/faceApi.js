@@ -76,9 +76,7 @@ export async function detectFaceLandmarksFromVideo(videoEl) {
   const load = await loadFaceLandmarkModels();
   if (!load.ok) return null;
 
-  return faceapi
-    .detectAllFaces(videoEl, tinyOpts())
-    .withFaceLandmarks();
+  return faceapi.detectAllFaces(videoEl, tinyOpts()).withFaceLandmarks();
 }
 
 let ageGenderLoadPromise = null;
@@ -155,7 +153,6 @@ export async function detectFacesLandmarksExpressionsFromVideo(videoEl) {
     .withFaceExpressions()
     .withAgeAndGender();
 }
-
 /**
  * @param {HTMLVideoElement} videoEl
  */
