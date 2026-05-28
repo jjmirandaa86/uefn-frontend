@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { DashboardLiveSessionProvider } from "./context/DashboardLiveSessionContext.jsx";
@@ -12,7 +12,6 @@ import { ShellFooterCredits } from "./components/footer/ShellFooterCredits.jsx";
 import { DashboardHeaderBar } from "./components/head/DashboardHeaderBar.jsx";
 import { SidebarMenu } from "./components/menu/SidebarMenu.jsx";
 import { useCamera } from "./hooks/useCamera";
-import { prefetchRecentEmotionHistory } from "./utils/recentHistoryCache.js";
 
 function App() {
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] =
@@ -50,10 +49,6 @@ function App() {
   const { videoRef, status, startCamera, stopCamera, cameraSessionStartedAt } =
     useCamera();
   const headerAvatar = getProfileAvatarById(userAvatarId);
-
-  useEffect(() => {
-    void prefetchRecentEmotionHistory();
-  }, []);
 
   const dashboardModalOpen =
     statsModalOpened ||

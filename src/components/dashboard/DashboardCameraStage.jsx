@@ -5,6 +5,7 @@ import {
   Button,
   Checkbox,
   Group,
+  Loader,
   Stack,
   Text,
   UnstyledButton,
@@ -23,7 +24,11 @@ import {
   NEUTRAL_FALLBACK,
 } from "../../dashboard/liveEmotionDefaults.js";
 import { usePauseCameraPreview } from "../../hooks/usePauseCameraPreview.js";
-import { detectFacesLandmarksExpressionsFromVideo } from "../../services/faceApi.js";
+import {
+  areDashboardFaceModelsReady,
+  detectFacesLandmarksExpressionsFromVideo,
+  loadDashboardFaceModels,
+} from "../../services/faceApi.js";
 import {
   faceEmotionSlotKey,
   sendEmotionCaptureToBackend,
@@ -55,12 +60,16 @@ function pickPrimaryFace(results) {
   });
 }
 
-function statusSubtitle(status) {
+function statusSubtitle(status, faceModelsLoading) {
   switch (status) {
     case "ready":
-      return "Cámara activa";
+      return faceModelsLoading
+        ? "Cargando modelos de detección facial…"
+        : "Cámara activa";
     case "requesting":
-      return "Solicitando acceso a la cámara…";
+      return faceModelsLoading
+        ? "Preparando cámara y modelos de IA…"
+        : "Solicitando acceso a la cámara…";
     case "insecure":
       return "Se requiere HTTPS para la cámara";
     case "unsupported":
@@ -128,6 +137,8 @@ export function DashboardCameraStage({
   const [isPreviewPaused, setIsPreviewPaused] = useState(false);
   /** @type {'checking' | 'ok' | 'error' | null} */
   const [apiLinkStatus, setApiLinkStatus] = useState(null);
+  const [faceModelsLoading, setFaceModelsLoading] = useState(false);
+  const [faceModelsError, setFaceModelsError] = useState(false);
   const prevStatusForFacialRef = useRef(status);
 
   const flashCaptureFilename = useCallback((filename) => {
@@ -193,6 +204,34 @@ export function DashboardCameraStage({
     if (status === "ready" && !faceTrackerRef.current) {
       faceTrackerRef.current = createFaceTracker();
     }
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "requesting" && status !== "ready") {
+      setFaceModelsLoading(false);
+      setFaceModelsError(false);
+      return undefined;
+    }
+
+    if (areDashboardFaceModelsReady()) {
+      setFaceModelsLoading(false);
+      setFaceModelsError(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setFaceModelsLoading(true);
+    setFaceModelsError(false);
+
+    void loadDashboardFaceModels().then((result) => {
+      if (cancelled) return;
+      setFaceModelsLoading(false);
+      if (!result.ok) setFaceModelsError(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [status]);
 
   useEffect(() => {
@@ -271,7 +310,8 @@ export function DashboardCameraStage({
   ]);
 
   useEffect(() => {
-    if (status !== "ready") return undefined;
+    if (status !== "ready" || faceModelsLoading || faceModelsError)
+      return undefined;
 
     const canvas = landmarksCanvasRef.current;
     let cancelled = false;
@@ -635,6 +675,8 @@ export function DashboardCameraStage({
     };
   }, [
     status,
+    faceModelsLoading,
+    faceModelsError,
     videoRef,
     setLiveEmotion,
     setEmotionRows,
@@ -689,7 +731,7 @@ export function DashboardCameraStage({
                     Vista en tiempo real
                   </Text>
                   <Text size="xs" c="dimmed">
-                    {statusSubtitle(status)}
+                    {statusSubtitle(status, faceModelsLoading)}
                   </Text>
                 </Stack>
               </Group>
@@ -785,7 +827,59 @@ export function DashboardCameraStage({
             playsInline
           />
 
-          {status === "ready" && (
+          {status === "ready" && faceModelsLoading ? (
+            <div
+              className="dcs-models-loading"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <Stack align="center" gap="md">
+                <Loader type="oval" color="violet" size="xl" />
+                <Stack align="center" gap={4}>
+                  <Text fw={700} size="md" c="gray.0" ta="center">
+                    Cargando modelos de IA
+                  </Text>
+                  <Text size="sm" c="dimmed" ta="center" maw={320}>
+                    La primera vez puede tardar unos segundos mientras se
+                    descargan los pesos de detección facial.
+                  </Text>
+                </Stack>
+              </Stack>
+            </div>
+          ) : null}
+
+          {status === "ready" && faceModelsError ? (
+            <div className="dcs-models-loading dcs-models-loading--error">
+              <Stack align="center" gap="sm">
+                <Text fw={700} size="md" c="red.3" ta="center">
+                  No se pudieron cargar los modelos
+                </Text>
+                <Text size="sm" c="dimmed" ta="center" maw={320}>
+                  Comprueba la conexión y que los archivos en /models estén
+                  disponibles.
+                </Text>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="light"
+                  color="violet"
+                  onClick={() => {
+                    setFaceModelsError(false);
+                    setFaceModelsLoading(true);
+                    void loadDashboardFaceModels().then((result) => {
+                      setFaceModelsLoading(false);
+                      if (!result.ok) setFaceModelsError(true);
+                    });
+                  }}
+                >
+                  Reintentar
+                </Button>
+              </Stack>
+            </div>
+          ) : null}
+
+          {status === "ready" && !faceModelsLoading && !faceModelsError && (
             <canvas
               ref={landmarksCanvasRef}
               className="dcs-landmarks-canvas"
@@ -796,6 +890,16 @@ export function DashboardCameraStage({
           {status !== "ready" && (
             <div className="camera-placeholder camera-placeholder--dcs">
               <div className="face-frame face-frame--dcs" />
+              {status === "requesting" ? (
+                <Stack align="center" gap="sm" mb="xs">
+                  <Loader type="oval" color="violet" size="lg" />
+                  <Text size="sm" c="dimmed" ta="center">
+                    {faceModelsLoading
+                      ? "Preparando cámara y modelos de IA…"
+                      : "Solicitando acceso a la cámara…"}
+                  </Text>
+                </Stack>
+              ) : null}
               <Text fw={800} size="xl" c="gray.0">
                 Vista previa IA
               </Text>
@@ -840,7 +944,7 @@ export function DashboardCameraStage({
             </div>
           )}
 
-          {status === "ready" && (
+          {status === "ready" && !faceModelsLoading && !faceModelsError && (
             <Box className="dcs-facial-points-check">
               <Checkbox
                 label="Puntos faciales"
@@ -861,7 +965,7 @@ export function DashboardCameraStage({
             </Box>
           )}
 
-          {status === "ready" && (
+          {status === "ready" && !faceModelsLoading && !faceModelsError && (
             <div className="dcs-bottom-strip">
               <Group
                 align="flex-end"

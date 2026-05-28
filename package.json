@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "nodemon --watch vite.config.js --watch index.html --exec \"vite --host 0.0.0.0\"",
     "build": "vite build",
+    "build:analyze": "ANALYZE=true vite build",
+    "bundle:baseline": "node scripts/capture-bundle-baseline.mjs",
+    "bundle:baseline:full": "ANALYZE=true vite build && node scripts/capture-bundle-baseline.mjs --skip-build",
     "preview": "vite preview",
     "lint": "eslint .",
     "download-face-models": "node scripts/download-face-models.mjs"
@@ -28,6 +31,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "nodemon": "^3.1.14",
+    "rollup-plugin-visualizer": "^5.14.0",
     "vite": "^6.4.2"
   }
 }

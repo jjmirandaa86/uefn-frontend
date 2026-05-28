@@ -6,6 +6,12 @@ const MODELS_URL =
 let faceApiReady = false;
 let loadPromise = null;
 let landmarkLoadPromise = null;
+let dashboardModelsReady = false;
+
+/** True si los pesos del dashboard ya están en memoria (no vuelven a descargarse en la sesión). */
+export function areDashboardFaceModelsReady() {
+  return dashboardModelsReady;
+}
 
 export function getFaceApi() {
   return faceapi;
@@ -120,6 +126,7 @@ export async function loadAgeGenderModel() {
 
 /** Carga detector + landmarks + expresiones + edad/género + reconocimiento (dashboard). */
 export async function loadDashboardFaceModels() {
+  if (dashboardModelsReady) return { ok: true };
   const [a, b, c, d] = await Promise.all([
     loadFaceLandmarkModels(),
     loadFaceApiModels(),
@@ -127,6 +134,7 @@ export async function loadDashboardFaceModels() {
     loadFaceRecognitionModel(),
   ]);
   const ok = a.ok && b.ok && c.ok && d.ok;
+  if (ok) dashboardModelsReady = true;
   return {
     ok,
     error: !a.ok ? a.error : !b.ok ? b.error : !c.ok ? c.error : d.error,

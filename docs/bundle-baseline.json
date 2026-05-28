@@ -1,0 +1,183 @@
+{
+  "capturedAt": "2026-05-28T08:23:20.311Z",
+  "viteVersion": "6.4.2",
+  "build": {
+    "modulesTransformed": null,
+    "jsChunkCount": 2,
+    "cssChunkCount": 1,
+    "viteReportedChunks": []
+  },
+  "initialLoad": {
+    "mainJs": {
+      "file": "assets/index-DVEEJqCf.js",
+      "bytes": 2662230,
+      "gzipBytes": 659904
+    },
+    "allJs": {
+      "bytes": 2662331,
+      "gzipBytes": 660006,
+      "files": [
+        {
+          "file": "assets/index-DVEEJqCf.js",
+          "bytes": 2662230,
+          "gzipBytes": 659904
+        },
+        {
+          "file": "config.js",
+          "bytes": 101,
+          "gzipBytes": 102
+        }
+      ]
+    },
+    "css": {
+      "bytes": 222168,
+      "gzipBytes": 34253,
+      "files": [
+        {
+          "file": "assets/index-ClTw72dg.css",
+          "bytes": 222168,
+          "gzipBytes": 34253
+        }
+      ]
+    }
+  },
+  "goals": {
+    "initialJsGzipMaxKB": 500,
+    "minJsChunkCount": 4,
+    "faceApiNotInInitialChunk": true,
+    "gameChunkIsolated": true
+  },
+  "deferred": {
+    "gameMedia": {
+      "bytes": 5031841,
+      "files": [
+        {
+          "file": "assets/bowser-rebolando-DrO8tMRT.gif",
+          "bytes": 3356684
+        },
+        {
+          "file": "assets/Super-Mario-PNG-Photos-DCLaKwQ0.png",
+          "bytes": 608295
+        },
+        {
+          "file": "assets/mario-bros-win-DcOgtnyu.png",
+          "bytes": 397503
+        },
+        {
+          "file": "assets/mario-running-B88AJ62J.gif",
+          "bytes": 249162
+        },
+        {
+          "file": "assets/mario-bros-face-CgoCXLr8.png",
+          "bytes": 205232
+        },
+        {
+          "file": "assets/design-snes-control-DxUBSuyX.png",
+          "bytes": 122253
+        },
+        {
+          "file": "assets/Game-Over-BA4Ux-01.png",
+          "bytes": 68143
+        },
+        {
+          "file": "assets/flag-CKxSqGZr.png",
+          "bytes": 24569
+        }
+      ]
+    },
+    "avatarMedia": {
+      "bytes": 232518,
+      "fileCount": 66
+    },
+    "faceApiModels": {
+      "distModelsBytes": 7796672,
+      "publicModelsBytes": 7796672
+    }
+  },
+  "dist": {
+    "totalBytes": 15964539,
+    "fileCount": 92
+  },
+  "topPackages": [
+    {
+      "pkg": "phaser",
+      "gzip": 1249938,
+      "raw": 8276076
+    },
+    {
+      "pkg": "@tensorflow",
+      "gzip": 126664,
+      "raw": 539409
+    },
+    {
+      "pkg": "@mantine/core",
+      "gzip": 108223,
+      "raw": 280896
+    },
+    {
+      "pkg": "react-dom",
+      "gzip": 98128,
+      "raw": 561467
+    },
+    {
+      "pkg": "(app + vendors inlined)",
+      "gzip": 76744,
+      "raw": 258520
+    },
+    {
+      "pkg": "face-api.js",
+      "gzip": 70612,
+      "raw": 258047
+    },
+    {
+      "pkg": "@floating-ui/react",
+      "gzip": 10305,
+      "raw": 46963
+    },
+    {
+      "pkg": "@tabler/icons-react/dist/esm/icons",
+      "gzip": 9017,
+      "raw": 15633
+    },
+    {
+      "pkg": "@floating-ui/dom",
+      "gzip": 6698,
+      "raw": 25202
+    },
+    {
+      "pkg": "@floating-ui/core",
+      "gzip": 6199,
+      "raw": 24528
+    },
+    {
+      "pkg": "react-remove-scroll",
+      "gzip": 5799,
+      "raw": 17328
+    },
+    {
+      "pkg": "react",
+      "gzip": 5681,
+      "raw": 20311
+    },
+    {
+      "pkg": "@mantine/hooks",
+      "gzip": 5085,
+      "raw": 12668
+    },
+    {
+      "pkg": "scheduler",
+      "gzip": 2847,
+      "raw": 11420
+    },
+    {
+      "pkg": "@floating-ui/utils",
+      "gzip": 2789,
+      "raw": 9071
+    }
+  ],
+  "notes": [
+    "Single JS chunk: no route-level code splitting yet.",
+    "recentHistoryCache.js is dynamically imported but also statically imported (Vite warning).",
+    "recharts is in package.json but not present in the production bundle."
+  ]
+}

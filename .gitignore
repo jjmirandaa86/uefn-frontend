@@ -5,6 +5,10 @@ node_modules/
 dist/
 build/
 
+# Bundle analysis (generados; ver npm run build:analyze)
+docs/bundle-stats.html
+docs/bundle-stats.json
+
 # Env
 .env
 .env.production

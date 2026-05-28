@@ -242,6 +242,17 @@ flowchart TD
 
 ---
 
+## 7.1 Rendimiento del bundle (baseline)
+
+Antes de optimizar el tamaño de la app (code splitting), el proyecto guarda una **línea base** medible:
+
+- Documentación: [`docs/BUNDLE_BASELINE.md`](docs/BUNDLE_BASELINE.md)
+- Snapshot JSON: [`docs/bundle-baseline.json`](docs/bundle-baseline.json)
+- Treemap (local): `npm run build:analyze` → abrir `docs/bundle-stats.html`
+- Regenerar métricas: `npm run bundle:baseline:full`
+
+---
+
 ## 8. Cómo ejecutarlo en tu máquina
 
 Necesitas **Node.js** (versión LTS recomendada) y npm.

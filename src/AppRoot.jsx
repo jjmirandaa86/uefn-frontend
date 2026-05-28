@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Loader, MantineProvider, Stack, Text } from "@mantine/core";
 import App from "./App.jsx";
+import { loadDashboardFaceModels } from "./services/faceApi.js";
+import { prefetchRecentEmotionHistory } from "./utils/recentHistoryCache.js";
 
 const SPLASH_MS = 3000;
 
@@ -8,8 +10,19 @@ export function AppRoot({ theme }) {
   const [showApp, setShowApp] = useState(false);
 
   useEffect(() => {
-    const id = window.setTimeout(() => setShowApp(true), SPLASH_MS);
-    return () => window.clearTimeout(id);
+    let cancelled = false;
+
+    void loadDashboardFaceModels();
+    void prefetchRecentEmotionHistory();
+
+    const id = window.setTimeout(() => {
+      if (!cancelled) setShowApp(true);
+    }, SPLASH_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(id);
+    };
   }, []);
 
   return (
